@@ -12,3 +12,43 @@ extensions/*/local-config.yml
 # Execution consent is stored separately in the user's local trust registry.
 integrations/packages/
 integrations/packages.json
+
+# Secrets and env files (keep .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.aws/
+
+# Claude Code personal settings (team settings.json is fine to commit)
+.claude/settings.local.json
+
+# Private files (CV PDF)
+private/
+
+# Dependencies and builds
+node_modules/
+.next/
+out/
+build/
+dist/
+content/.generated/
+
+# CDK
+infra/cdk.out/
+infra/.build/
+cdk.context.json
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+
+# Logs and OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
