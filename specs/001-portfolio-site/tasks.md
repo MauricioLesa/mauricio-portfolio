@@ -167,7 +167,7 @@ required content, and "Contact me" opens an email to the public email (quickstar
 - [X] T036 [P] [US1] Create `tests/unit/server/content/projects.test.ts`: `getFeaturedProjects()` returns exactly 3, ordered by `featuredRank`; `getProject("unknown")` returns `null`; `getProjects()` is sorted by `publishedAt` desc.
 - [X] T037 [P] [US1] Create `tests/e2e/home.smoke.spec.ts` (V1): at 1366×768, without scrolling, the one-liner, 3 project cards, "Contact me" and "Download CV" are in the viewport. Run the axe scan, and check that each card is reachable by Tab.
 - [X] T038 [P] [US1] Create `tests/e2e/about.smoke.spec.ts` (V3): all 8 stack items are present and the "Learning now" list is non-empty. Run the axe scan.
-- [ ] T039 [P] [US1] Create `tests/e2e/projects.smoke.spec.ts` (the list page) and `tests/e2e/project-detail.smoke.spec.ts` (V2): the H2s `Problem`, `Architecture`, `Trade-offs` and `Results` appear in order, and an unknown slug returns 404. Run the axe scan.
+- [X] T039 [P] [US1] Create `tests/e2e/projects.smoke.spec.ts` (the list page) and `tests/e2e/project-detail.smoke.spec.ts` (V2): the H2s `Problem`, `Architecture`, `Trade-offs` and `Results` appear in order, and an unknown slug returns 404. Run the axe scan.
 - [ ] T040 [P] [US1] Create `tests/e2e/contact.spec.ts` (V4): "Contact me" has `href="mailto:<publicEmail>"`, and no page's HTML contains a phone-number pattern or any other email.
 
 ### Implementation for User Story 1
@@ -177,8 +177,8 @@ required content, and "Contact me" opens an email to the public email (quickstar
 - [X] T043 [P] [US1] Create `src/components/ContactLink.tsx` (`mailto:` the public email, `data-analytics-event="contact-click"`) and `src/components/CvDownloadLink.tsx` (`href="/api/cv/link"`, `rel="nofollow"`, `data-analytics-event="cv-download"`). The route itself comes in US2.
 - [X] T044 [US1] Create `src/app/page.tsx` (Home): `getPage("home").oneLiner`, the 3 cards from `getFeaturedProjects()`, `ContactLink` and `CvDownloadLink`.
 - [X] T045 [US1] Create `src/app/about/page.tsx`: background (MDX body), the stack list and the "Learning now" list from `getPage("about")`.
-- [ ] T046 [US1] Create `src/app/projects/page.tsx`: every project from `getProjects()` as a list of `ProjectCard`s.
-- [ ] T047 [US1] Create `src/app/projects/[slug]/page.tsx`: `generateStaticParams` from `getProjectSlugs()`, `notFound()` when `getProject()` returns `null`, `generateMetadata`, and the body rendered with `Mdx`.
+- [X] T046 [US1] Create `src/app/projects/page.tsx`: every project from `getProjects()` as a list of `ProjectCard`s.
+- [X] T047 [US1] Create `src/app/projects/[slug]/page.tsx`: `generateStaticParams` from `getProjectSlugs()`, `notFound()` when `getProject()` returns `null`, `generateMetadata`, and the body rendered with `Mdx`.
 - [ ] T048 [US1] Add `headers()` in `next.config.ts`: content pages get `Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800`, and `/api/:path*` gets `Cache-Control: no-store`. Add `src/app/robots.ts` with `Disallow: /api/`, and `src/app/sitemap.ts` listing all pages and project slugs.
 
 **Checkpoint**: US1 works and is tested on its own. This is the MVP portfolio.
