@@ -6,6 +6,12 @@ import { getProject, getProjectSlugs } from "@/server/content";
 
 // Every case study is prerendered at build time. With Cache Components on, `dynamicParams` isn't
 // available, so an unknown slug renders at request time and getProject() returning null sends a 404.
+// Reading `params` outside <Suspense> makes this page's shell URL-specific, which instant-navigation
+// validation flags in dev. Moving the content into <Suspense> would stream unknown slugs with a 200
+// status and a noindex tag instead of a real 404, so this route opts out of that validation. Every
+// known slug is still fully prerendered, so navigating to a case study stays fast.
+export const instant = false;
+
 export async function generateStaticParams() {
   const slugs = await getProjectSlugs();
   return slugs.map((slug) => ({ slug }));
