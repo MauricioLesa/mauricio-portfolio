@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
+/*
+ * Colour tokens. Every text/background pair meets WCAG AA (4.5:1) in both themes:
+ *   light: fg #1a1a1a on #ffffff ≈ 17:1, muted #4a4a4a ≈ 8.9:1, accent #0b5cad ≈ 6.6:1
+ *   dark:  fg #ececec on #0f1115 ≈ 15:1, muted #b4b4b4 ≈ 9.4:1, accent #7cb7ff ≈ 9:1
+ *   buttons: #ffffff on #0b5cad ≈ 6.6:1 (light), #0f1115 on #7cb7ff ≈ 9:1 (dark)
+ */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1a1a1a;
+  --muted: #4a4a4a;
+  --accent: #0b5cad;
+  --accent-contrast: #ffffff;
+  --surface: #f5f6f8;
+  --border: #d4d6db;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1115;
+    --foreground: #ececec;
+    --muted: #b4b4b4;
+    --accent: #7cb7ff;
+    --accent-contrast: #0f1115;
+    --surface: #181b21;
+    --border: #33363d;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* A visible focus indicator on every focusable element (FR-028). */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }

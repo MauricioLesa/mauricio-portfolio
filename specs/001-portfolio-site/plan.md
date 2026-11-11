@@ -32,13 +32,14 @@ arm64).
 **Primary Dependencies** (each has its reason under Constitution Check, Principle VIII):
 - Framework: `next`, `react`, `react-dom`.
 - Validation: `zod`.
+- Styling: `tailwindcss`, `@tailwindcss/turbopack`.
 - Content: `gray-matter`, `next-mdx-remote`.
 - AI: `@anthropic-ai/bedrock-sdk` for Claude. `@aws-sdk/client-bedrock-runtime` for Titan
   embeddings.
 - AWS: `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` for storage. `@aws-sdk/client-s3`
   and `@aws-sdk/s3-request-presigner` for the CV links. `@aws-sdk/client-ssm` for the secret.
 - Infrastructure: `aws-cdk-lib`, `constructs`, `aws-cdk`.
-- Tooling: `vitest`, `@playwright/test`, `@axe-core/playwright`, `tsx`, and ESLint (Next.js's
+- Tooling: `vitest`, `@vitest/coverage-v8`, `@playwright/test`, `@axe-core/playwright`, `tsx`, and ESLint (Next.js's
   default config).
 - Outside npm: the AWS Lambda Web Adapter (a Lambda layer) and the Umami script tag.
 
@@ -100,6 +101,7 @@ none of them changes the design.
 |---|---|
 | `next`, `react`, `react-dom`, `typescript` | Stack required by the constitution |
 | `zod` | Server-side validation required by the constitution; also validates config and content |
+| `tailwindcss`, `@tailwindcss/turbopack` (dev) | Next.js default styling; compiles to static CSS with no runtime cost |
 | `gray-matter` | Reads MDX frontmatter as plain data, so the content functions and the index script don't need to compile MDX |
 | `next-mdx-remote` | Renders MDX bodies in server components from strings returned by `getProject()` |
 | `@anthropic-ai/bedrock-sdk` | Official SDK for Claude on Bedrock (Mantle client), with streaming and typed usage |
@@ -109,6 +111,7 @@ none of them changes the design.
 | `@aws-sdk/client-ssm` | Reads the one SecureString secret at cold start |
 | `aws-cdk-lib`, `constructs`, `aws-cdk` (dev) | Infrastructure as code, required by the constitution workflow |
 | `vitest`, `@playwright/test` (dev) | Tests required by the constitution |
+| `@vitest/coverage-v8` (dev) | Coverage reports for `src/server/**` unit tests, using V8's built-in coverage with no code instrumentation |
 | `@axe-core/playwright` (dev) | Automated WCAG AA checks for SC-007 |
 | `tsx` (dev) | Runs the TypeScript scripts (index build, eval runner) without a separate build step |
 | ESLint and `eslint-config-next` (dev) | Next.js default; also enforces that `src/server` stays framework-free and that pages read content only through the content functions |
