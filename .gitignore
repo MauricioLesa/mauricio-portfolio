@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+.next/
 /out/
 
 # production
@@ -32,6 +33,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,6 +42,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-DEMO_SECRET=sk-test-DO-NOT-LEAK-4821
-NEXT_PUBLIC_SITE_NAME=Mauricio Portfolio
-.env.example
+# project (T007)
+content/.generated/
+private/
+infra/cdk.out/
+infra/.build/
+test-results/
+playwright-report/

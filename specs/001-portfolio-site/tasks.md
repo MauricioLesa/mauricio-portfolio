@@ -43,20 +43,20 @@ This is a single Next.js app at the repo root (`src/`, `content/`, `evals/`, `sc
 
 **Purpose**: initialize the project, tooling and the merge gate.
 
-- [ ] T001 Scaffold a Next.js App Router project at the repo root with TypeScript, ESLint and a `src/` directory, and no Tailwind (styling uses CSS Modules, so no extra dependency). Set `output: "standalone"` in `next.config.ts`. Pin exact versions of `next`, `react` and `react-dom` in `package.json`.
-- [ ] T002 Install the runtime dependencies listed in plan.md, with exact versions, into `package.json`: `zod`, `gray-matter`, `next-mdx-remote`, `@anthropic-ai/bedrock-sdk`, `@aws-sdk/client-bedrock-runtime`, `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-ssm`. Also install the dev dependencies `vitest`, `@playwright/test`, `@axe-core/playwright` and `tsx`. Add nothing that isn't listed (Principle VIII).
-- [ ] T003 [P] Configure `tsconfig.json`: `"strict": true`, `"noUncheckedIndexedAccess": true`, `"noImplicitOverride": true`, and the path alias `@/*` → `src/*`.
+- [X] T001 Scaffold a Next.js App Router project at the repo root with TypeScript, ESLint, Tailwind CSS (`tailwindcss` and `@tailwindcss/turbopack`; see the plan.md dependency reasons) and a `src/` directory. Set `output: "standalone"` in `next.config.ts`. Pin exact versions of `next`, `react` and `react-dom` in `package.json`.
+- [X] T002 Install the runtime dependencies listed in plan.md, with exact versions, into `package.json`: `zod`, `gray-matter`, `next-mdx-remote`, `@anthropic-ai/bedrock-sdk`, `@aws-sdk/client-bedrock-runtime`, `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-ssm`. Also install the dev dependencies `vitest`, `@playwright/test`, `@axe-core/playwright` and `tsx`. Add nothing that isn't listed (Principle VIII).
+- [X] T003 [P] Configure `tsconfig.json`: `"strict": true`, `"noUncheckedIndexedAccess": true`, `"noImplicitOverride": true`, and the path alias `@/*` → `src/*`.
 - [ ] T004 [P] Add `no-restricted-imports` rules in `eslint.config.mjs`:
   - (a) files in `src/server/**` may not import `next`, `next/*`, `react` or `react-dom`;
   - (b) files outside `src/server/content/**` and `scripts/**` may not import `fs`, `node:fs`, `fs/promises`, `gray-matter`, or any path under `content/`;
   - (c) ban `@ts-ignore`, using `@typescript-eslint/ban-ts-comment`.
-- [ ] T005 [P] Create `vitest.config.ts`: Node environment, `tests/unit/**/*.test.ts` and `infra/test/**/*.test.ts`, the `@` alias, and v8 coverage for `src/server/**`.
+- [X] T005 [P] Create `vitest.config.ts`: Node environment, `tests/unit/**/*.test.ts` and `infra/test/**/*.test.ts`, the `@` alias, and v8 coverage for `src/server/**`.
 - [ ] T006 [P] Create `playwright.config.ts`:
   - By default, `webServer` runs `npm run build && npm start` with `AWS_MODE=fake`. When `PLAYWRIGHT_BASE_URL` is set, use it as `baseURL` and skip `webServer`, so the smoke tests can run against a deployed site (Phase 4).
   - Two projects: Desktop Chrome at 1366×768, and Pixel 7.
   - Add `tests/e2e/helpers/a11y.ts`, which exports `expectNoA11yViolations(page)` using `@axe-core/playwright` with tags `wcag2a`, `wcag2aa`, `wcag21aa` and fails on any `serious` or `critical` issue (SC-007).
-- [ ] T007 [P] Add these to `.gitignore`: `.env.local`, `content/.generated/`, `private/`, `infra/cdk.out/`, `infra/.build/`, `.next/`, `test-results/`, `playwright-report/`.
-- [ ] T008 [P] Create `.env.example` listing every variable from the quickstart.md table, each with a one-line purpose comment and no real values. Also list these, which are not in that table:
+- [X] T007 [P] Add these to `.gitignore`: `.env.local`, `content/.generated/`, `private/`, `infra/cdk.out/`, `infra/.build/`, `.next/`, `test-results/`, `playwright-report/`.
+- [X] T008 [P] Create `.env.example` listing every variable from the quickstart.md table, each with a one-line purpose comment and no real values. Also list these, which are not in that table:
   - **App and tests**: `AWS_MODE` (`real` | `fake`; `fake` uses in-memory stores and a scripted model for tests and CI), `PLAYWRIGHT_BASE_URL` (optional; runs the e2e tests against a deployed URL) and `SEED_EVALS` (optional, `1` seeds fake eval runs for the dashboard tests, T097).
   - **Set by CDK on the Lambda function, not by you** (listed for reference): `AWS_LAMBDA_EXEC_WRAPPER` (`/opt/bootstrap`, starts the Lambda Web Adapter), `AWS_LWA_INVOKE_MODE` (`response_stream`, streams responses) and `AWS_LWA_PORT` (`3000`, the port the Next.js server listens on).
 

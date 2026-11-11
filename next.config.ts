@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Self-contained server bundle for Lambda (packaged by scripts/package-lambda.ts, T034).
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
