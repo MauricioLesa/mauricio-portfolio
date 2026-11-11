@@ -1,0 +1,48 @@
+---
+# TODO(owner): placeholder content. Replace with your real details before release.
+slug: code-migration
+title: Code migration with claude code
+summary: Our team migrated a client's .NET Razor Pages application to a standalone React front end.
+featured: true
+featuredRank: 1
+stack: [React js, TypeScript]
+publishedAt: 2026-09-01
+---
+
+## Problem
+
+The application's front end had grown over years. Styles, icons and UI logic were scattered across the codebase, and each Razor page mixed data access, permission checks and rendering in one place. We needed to move it to React without losing the security rules, roles and permissions each page enforced, and without every page ending up migrated a slightly different way.
+
+## Architecture
+
+1. Consolidate first. Before migrating anything, we gathered the duplicated styles, icons and shared UI pieces into one place, so the React app started from a single source instead of copying the mess.
+
+2. Analyze before automating. We mapped what every page and component did: where it got its data, which roles and permissions it checked, and how the user moved between pages. The front end already used TypeScript with Knockout.js, and many Knockout patterns (observables, bindings, lifecycle hooks) had close React equivalents. Writing those mappings down turned the migration from guesswork into rules.
+
+3. One Claude Code skill per layer. Instead of asking an agent to "migrate this page", we split the work into separate skills, each with one job:
+
+Data access: replace the page's direct server-side data loading with a call to the matching API endpoint.
+State and data flow: fetch server data with React Query and share client state with Redux.
+Wiring: connect the data layer to the components (the container, or presenter, side).
+Presentational components: build components with no data logic, organized with atomic design (atoms, molecules, organisms).
+
+## How we verified the output
+
+Each layer was checked in the way that fit its risk:
+
+Data layer: code review. The backend services already existed, so most changes moved a call from the page to an endpoint, which is easy to verify in the diff.
+Layout and styles: a visual comparison of each migrated page against the original, so no styles were lost.
+Behavior (state, wiring, permissions): we wrote test cases, ran them by hand on the original application, then ran the same cases on the React version and compared the results.
+
+## Trade-offs
+
+Layers instead of whole pages. Each skill did a small, well-defined job, so its output was consistent and easy to review. The cost was more design up front and more pieces to coordinate.
+React Query and Redux together. React Query owns server data (caching, refetching); Redux owns shared UI state. Two libraries is more to learn, but it keeps server and UI state from tangling.
+Analysis before automation. Slower to start, but the agents followed documented patterns instead of inventing their own.
+What I'd do differently now: automate the before-and-after behavior checks with Playwright, so every migrated page is compared against the original on each pull request instead of by hand.
+
+## Results
+
+A typical page page migration was done in a day with the skills, including review.
+Pull requests became smaller and more uniform, because each one followed the same layer structure.
+

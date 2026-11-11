@@ -34,7 +34,7 @@ describe('project content functions', () => {
 
 describe('project validation errors', () => {
   it('rejects a slug that does not match the file name', async () => {
-    const root = contentWith({ 'projects/project-one.mdx': (t) => t.replace('slug: project-one', 'slug: other') });
+    const root = contentWith({ 'projects/code-migration.mdx': (t) => t.replace('slug: code-migration', 'slug: other') });
     await expect(createContent(root).getProjects()).rejects.toThrow(/must match the file name/);
   });
 

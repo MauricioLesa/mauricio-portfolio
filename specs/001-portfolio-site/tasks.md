@@ -114,6 +114,8 @@ infrastructure for the skeleton site.
 
   With `--strict`, it also fails while any `TODO(owner)` marker remains in `content/` **or in `evals/cases/`**, so placeholder eval cases can't ship.
 - [ ] T026 Seed schema-valid placeholder content, each file marked `TODO(owner)`: `content/cv.mdx`; `content/pages/home.mdx`, `about.mdx` (with the 8 stack items), `how-i-work-with-ai.mdx`, `architecture.mdx` (with the 8 practices) and `guardrails.mdx` (with the 4 categories); and `content/projects/project-one.mdx`, `project-two.mdx` and `project-three.mdx` (all featured, ranks 1–3, each with the 4 sections). Run `npm run content:check` to confirm they pass.
+
+  Note: `project-one.mdx` has since been renamed to `content/projects/code-migration.mdx` (slug `code-migration`, title "Code migration with claude code") and filled with real content.
 - [ ] T027 [P] Create test fixtures in `tests/fixtures/content/`: one valid set and one invalid set per rule in T025. Test in `tests/unit/server/content/loader.test.ts` and `tests/unit/scripts/check-content.test.ts`.
 - [X] T028 Create `src/app/layout.tsx` and `src/app/globals.css`:
   - `<html lang="en">`, a "Skip to content" link, `<header>` with `<nav aria-label="Main">`, `<main id="main">`, and a `<footer>` with the public email from `getPublicEmail()`.
