@@ -51,7 +51,7 @@ This is a single Next.js app at the repo root (`src/`, `content/`, `evals/`, `sc
   - (b) files outside `src/server/content/**` and `scripts/**` may not import `fs`, `node:fs`, `fs/promises`, `gray-matter`, or any path under `content/`;
   - (c) ban `@ts-ignore`, using `@typescript-eslint/ban-ts-comment`.
 - [X] T005 [P] Create `vitest.config.ts`: Node environment, `tests/unit/**/*.test.ts` and `infra/test/**/*.test.ts`, the `@` alias, and v8 coverage for `src/server/**`.
-- [ ] T006 [P] Create `playwright.config.ts`:
+- [X] T006 [P] Create `playwright.config.ts`:
   - By default, `webServer` runs `npm run build && npm start` with `AWS_MODE=fake`. When `PLAYWRIGHT_BASE_URL` is set, use it as `baseURL` and skip `webServer`, so the smoke tests can run against a deployed site (Phase 4).
   - Two projects: Desktop Chrome at 1366×768, and Pixel 7.
   - Add `tests/e2e/helpers/a11y.ts`, which exports `expectNoA11yViolations(page)` using `@axe-core/playwright` with tags `wcag2a`, `wcag2aa`, `wcag21aa` and fails on any `serious` or `critical` issue (SC-007).
@@ -98,12 +98,12 @@ infrastructure for the skeleton site.
 - [ ] T016 [P] Create `src/server/store/dynamo.ts`, the `Store` implementation on the DynamoDB Document client. It uses table `config.DYNAMO_TABLE_NAME` and the TTL attribute `ttl` in epoch seconds.
 - [ ] T017 [P] Create `src/server/store/memory.ts`, an in-memory `Store` with the same semantics, including TTL expiry against an injected clock and atomic `ADD`. Test in `tests/unit/server/store/memory.test.ts`.
 - [ ] T018 Create `src/server/deps.ts` with `getDeps()`. It returns `{ store, clock, log }`, using the real implementations when `AWS_MODE=real` and the fakes when `AWS_MODE=fake`. Later stories extend it: `secrets` (T019), and `model` and `embedder` (T074).
-- [ ] T022 [P] Create `src/server/content/schemas.ts`, zod schemas from data-model.md section 1 with these exact constraints:
+- [X] T022 [P] Create `src/server/content/schemas.ts`, zod schemas from data-model.md section 1 with these exact constraints:
   - **Project**: `slug` (lowercase letters, digits and hyphens; equal to the filename), `title` (1–80 characters), `summary` (1–200 characters), `featured` (boolean), `featuredRank` (1 | 2 | 3, required when featured), `stack` (string[] with at least 1 entry), optional `images` (`{ src, alt }[]` where `alt` is required), `publishedAt` (ISO date).
   - **Cv**: `name`, `headline`, `location`, `publicEmail` (email), `experience` (`{ company, role, start, end | null, highlights[] }`), `skills` (`{ group, items[] }`), `education`, `pdfVersion`.
   - **Pages**: `home.oneLiner` (≤ 160 characters); `about.stack` must include Node.js, TypeScript, React, Next.js, Docker, Redis, RabbitMQ and AWS; `about.learningNow` (at least 1 entry); `how-i-work-with-ai.steps[]`; `architecture.practices[]` (`{ name, where }`); `guardrails.categories[]` (`{ id, reason, examples[{ prompt, response }] }`).
-- [ ] T023 Create `src/server/content/loader.ts`. It reads MDX files from `content/` (the root can be overridden for tests), splits the frontmatter with `gray-matter`, validates it against the schemas, caches the result per process, and throws `ContentError` with the file path and the zod issues.
-- [ ] T024 Create `src/server/content/index.ts` implementing `contracts/server-modules.md` → Content: `getProjects()` (sorted by `publishedAt` desc), `getFeaturedProjects()` (exactly 3, by `featuredRank`), `getProject(slug)` (returns `null` if unknown), `getProjectSlugs()`, `getCv()`, `getPage(name)` and `getPublicEmail()`.
+- [X] T023 Create `src/server/content/loader.ts`. It reads MDX files from `content/` (the root can be overridden for tests), splits the frontmatter with `gray-matter`, validates it against the schemas, caches the result per process, and throws `ContentError` with the file path and the zod issues.
+- [X] T024 Create `src/server/content/index.ts` implementing `contracts/server-modules.md` → Content: `getProjects()` (sorted by `publishedAt` desc), `getFeaturedProjects()` (exactly 3, by `featuredRank`), `getProject(slug)` (returns `null` if unknown), `getProjectSlugs()`, `getCv()`, `getPage(name)` and `getPublicEmail()`.
 - [ ] T025 Create `scripts/check-content.ts`, which validates all content and fails if:
   - the number of featured projects is not exactly 3, or a `featuredRank` is duplicated (FR-002);
   - a case study lacks the H2 sections `Problem`, `Architecture`, `Trade-offs` and `Results` in that order (FR-004);
@@ -115,10 +115,10 @@ infrastructure for the skeleton site.
   With `--strict`, it also fails while any `TODO(owner)` marker remains in `content/` **or in `evals/cases/`**, so placeholder eval cases can't ship.
 - [ ] T026 Seed schema-valid placeholder content, each file marked `TODO(owner)`: `content/cv.mdx`; `content/pages/home.mdx`, `about.mdx` (with the 8 stack items), `how-i-work-with-ai.mdx`, `architecture.mdx` (with the 8 practices) and `guardrails.mdx` (with the 4 categories); and `content/projects/project-one.mdx`, `project-two.mdx` and `project-three.mdx` (all featured, ranks 1–3, each with the 4 sections). Run `npm run content:check` to confirm they pass.
 - [ ] T027 [P] Create test fixtures in `tests/fixtures/content/`: one valid set and one invalid set per rule in T025. Test in `tests/unit/server/content/loader.test.ts` and `tests/unit/scripts/check-content.test.ts`.
-- [ ] T028 Create `src/app/layout.tsx` and `src/app/globals.css`:
+- [X] T028 Create `src/app/layout.tsx` and `src/app/globals.css`:
   - `<html lang="en">`, a "Skip to content" link, `<header>` with `<nav aria-label="Main">`, `<main id="main">`, and a `<footer>` with the public email from `getPublicEmail()`.
   - CSS colour tokens with AA contrast, and a visible `:focus-visible` outline.
-- [ ] T029 [P] Create `src/components/nav-items.ts`, the ordered list of the 9 pages with `{ href, label }`, so a future 10th page is a one-line change. Create `src/components/Nav.tsx`, a server component whose mobile menu uses `<details>`/`<summary>` so it works without JavaScript. It sets `aria-current="page"` on the current page.
+- [X] T029 [P] Create `src/components/nav-items.ts`, the ordered list of the 9 pages with `{ href, label }`, so a future 10th page is a one-line change. Create `src/components/Nav.tsx`, a server component whose mobile menu uses `<details>`/`<summary>` so it works without JavaScript. It sets `aria-current="page"` on the current page.
 - [ ] T030 [P] Create `src/app/not-found.tsx` and `src/app/error.tsx`, accessible error pages that link back to Home.
 - [ ] T031 In `infra/lib/portfolio-stack.ts`, create the DynamoDB table `Portfolio`: `PK` and `SK` strings, `PAY_PER_REQUEST`, TTL attribute `ttl`, point-in-time recovery off, `RemovalPolicy.RETAIN`. Expose it as a stack property for later tasks.
 - [ ] T113 In `infra/lib/portfolio-stack.ts`, create the static assets S3 bucket: Block Public Access, SSE-S3, `enforceSSL`. Expose it as a stack property.
@@ -164,19 +164,19 @@ required content, and "Contact me" opens an email to the public email (quickstar
 
 ### Tests for User Story 1 ⚠️ (write first, confirm they fail)
 
-- [ ] T036 [P] [US1] Create `tests/unit/server/content/projects.test.ts`: `getFeaturedProjects()` returns exactly 3, ordered by `featuredRank`; `getProject("unknown")` returns `null`; `getProjects()` is sorted by `publishedAt` desc.
-- [ ] T037 [P] [US1] Create `tests/e2e/home.smoke.spec.ts` (V1): at 1366×768, without scrolling, the one-liner, 3 project cards, "Contact me" and "Download CV" are in the viewport. Run the axe scan, and check that each card is reachable by Tab.
-- [ ] T038 [P] [US1] Create `tests/e2e/about.smoke.spec.ts` (V3): all 8 stack items are present and the "Learning now" list is non-empty. Run the axe scan.
+- [X] T036 [P] [US1] Create `tests/unit/server/content/projects.test.ts`: `getFeaturedProjects()` returns exactly 3, ordered by `featuredRank`; `getProject("unknown")` returns `null`; `getProjects()` is sorted by `publishedAt` desc.
+- [X] T037 [P] [US1] Create `tests/e2e/home.smoke.spec.ts` (V1): at 1366×768, without scrolling, the one-liner, 3 project cards, "Contact me" and "Download CV" are in the viewport. Run the axe scan, and check that each card is reachable by Tab.
+- [X] T038 [P] [US1] Create `tests/e2e/about.smoke.spec.ts` (V3): all 8 stack items are present and the "Learning now" list is non-empty. Run the axe scan.
 - [ ] T039 [P] [US1] Create `tests/e2e/projects.smoke.spec.ts` (the list page) and `tests/e2e/project-detail.smoke.spec.ts` (V2): the H2s `Problem`, `Architecture`, `Trade-offs` and `Results` appear in order, and an unknown slug returns 404. Run the axe scan.
 - [ ] T040 [P] [US1] Create `tests/e2e/contact.spec.ts` (V4): "Contact me" has `href="mailto:<publicEmail>"`, and no page's HTML contains a phone-number pattern or any other email.
 
 ### Implementation for User Story 1
 
-- [ ] T041 [P] [US1] Create `src/components/ProjectCard.tsx`: a heading-level-aware card showing the title, summary and stack, with a link to `/projects/[slug]` whose accessible name is the project title.
-- [ ] T042 [P] [US1] Create `src/components/Mdx.tsx`. It renders MDX source with `next-mdx-remote/rsc`, and its custom `img` component requires `alt` (an empty string is allowed for decorative images).
-- [ ] T043 [P] [US1] Create `src/components/ContactLink.tsx` (`mailto:` the public email, `data-analytics-event="contact-click"`) and `src/components/CvDownloadLink.tsx` (`href="/api/cv/link"`, `rel="nofollow"`, `data-analytics-event="cv-download"`). The route itself comes in US2.
-- [ ] T044 [US1] Create `src/app/page.tsx` (Home): `getPage("home").oneLiner`, the 3 cards from `getFeaturedProjects()`, `ContactLink` and `CvDownloadLink`.
-- [ ] T045 [US1] Create `src/app/about/page.tsx`: background (MDX body), the stack list and the "Learning now" list from `getPage("about")`.
+- [X] T041 [P] [US1] Create `src/components/ProjectCard.tsx`: a heading-level-aware card showing the title, summary and stack, with a link to `/projects/[slug]` whose accessible name is the project title.
+- [X] T042 [P] [US1] Create `src/components/Mdx.tsx`. It renders MDX source with `next-mdx-remote/rsc`, and its custom `img` component requires `alt` (an empty string is allowed for decorative images).
+- [X] T043 [P] [US1] Create `src/components/ContactLink.tsx` (`mailto:` the public email, `data-analytics-event="contact-click"`) and `src/components/CvDownloadLink.tsx` (`href="/api/cv/link"`, `rel="nofollow"`, `data-analytics-event="cv-download"`). The route itself comes in US2.
+- [X] T044 [US1] Create `src/app/page.tsx` (Home): `getPage("home").oneLiner`, the 3 cards from `getFeaturedProjects()`, `ContactLink` and `CvDownloadLink`.
+- [X] T045 [US1] Create `src/app/about/page.tsx`: background (MDX body), the stack list and the "Learning now" list from `getPage("about")`.
 - [ ] T046 [US1] Create `src/app/projects/page.tsx`: every project from `getProjects()` as a list of `ProjectCard`s.
 - [ ] T047 [US1] Create `src/app/projects/[slug]/page.tsx`: `generateStaticParams` from `getProjectSlugs()`, `notFound()` when `getProject()` returns `null`, `generateMetadata`, and the body rendered with `Mdx`.
 - [ ] T048 [US1] Add `headers()` in `next.config.ts`: content pages get `Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800`, and `/api/:path*` gets `Cache-Control: no-store`. Add `src/app/robots.ts` with `Disallow: /api/`, and `src/app/sitemap.ts` listing all pages and project slugs.
