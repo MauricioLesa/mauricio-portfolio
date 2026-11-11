@@ -238,7 +238,7 @@ be fetched directly (V5–V7).
 - [ ] T052 [US2] Create `src/server/cv/cvLink.ts`, implementing `issueCvLink(visitorHash)` and `resolveCvGrant(grantId)` as specified in `contracts/server-modules.md`. Use `checkAndCountRate("cv", …)`, `crypto.randomBytes(16).toString("hex")` for the ID, and the key layout from data-model.md.
 - [ ] T053 [US2] Create `src/app/api/cv/link/route.ts`: a GET that computes `visitorHash(clientIpFrom(headers))`, calls `issueCvLink`, and responds `303` to `/api/cv/file/{grantId}`, or `303` to `/cv/too-many-requests` when rate-limited. Set `Cache-Control: no-store`.
 - [ ] T054 [US2] Create `src/app/api/cv/file/[grantId]/route.ts`: a GET that validates `grantId` with zod `/^[0-9a-f]{32}$/` and calls `resolveCvGrant`. It responds `302` to the presigned URL, or `302` to `/cv/link-expired` for invalid, unknown or expired grants.
-- [ ] T055 [US2] Create `src/app/cv/page.tsx`: the HTML CV from `getCv()` and `CvDownloadLink`. It reads no query parameters (analysis C1), so it is fully static and cached like the other content pages (T048).
+- [X] T055 [US2] Create `src/app/cv/page.tsx`: the HTML CV from `getCv()` and `CvDownloadLink`. It reads no query parameters (analysis C1), so it is fully static and cached like the other content pages (T048).
 - [ ] T120 [P] [US2] Create two static status pages, outside the nav:
   - `src/app/cv/link-expired/page.tsx`: "This download link has expired." with a `CvDownloadLink` to request a new one (FR-010).
   - `src/app/cv/too-many-requests/page.tsx`: "You've requested the CV several times in the last hour. Please try again later." with `ContactLink` and a link back to `/cv` (FR-032).
