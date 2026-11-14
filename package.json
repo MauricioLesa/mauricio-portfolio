@@ -6,11 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p infra",
+    "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "content:check": "tsx scripts/check-content.ts",
+    "index:build": "tsx scripts/build-index.ts",
+    "eval": "tsx evals/run.ts",
+    "package:lambda": "tsx scripts/package-lambda.ts"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "1.1.2",

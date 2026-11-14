@@ -21,7 +21,8 @@ export function contentWith(edits: Record<string, (text: string) => string | nul
   cpSync(REPO_CONTENT, dir, { recursive: true });
   for (const [file, edit] of Object.entries(edits)) {
     const full = path.join(dir, file);
-    const next = edit(readFileSync(full, 'utf8'));
+    // Normalize CRLF (Windows checkouts) so edits can match on `\n`.
+    const next = edit(readFileSync(full, 'utf8').replace(/\r\n/g, '\n'));
     if (next === null) rmSync(full);
     else writeFileSync(full, next);
   }
