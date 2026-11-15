@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // CDK output and the packaged Lambda (generated).
+    "infra/cdk.out/**",
+    "infra/.build/**",
   ]),
 ]);
 

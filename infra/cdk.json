@@ -1,0 +1,19 @@
+{
+  "app": "npx tsx bin/portfolio.ts",
+  "watch": {
+    "include": ["bin/**", "lib/**"],
+    "exclude": ["cdk.out", ".build", "node_modules", "test"]
+  },
+  "context": {
+    "//reservedConcurrency": "0 = no reservation, because this account's Lambda concurrency quota is 10 (AWS keeps 10 unreserved). Remove this and the next line once the quota is raised; the stack then reserves 10.",
+    "reservedConcurrency": 0,
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
+    "@aws-cdk/core:checkSecretUsage": true,
+    "@aws-cdk/core:target-partitions": ["aws"],
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
+    "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
+    "@aws-cdk/aws-s3:serverAccessLogsUseBucketPolicy": true,
+    "@aws-cdk/core:enablePartitionLiterals": true
+  }
+}

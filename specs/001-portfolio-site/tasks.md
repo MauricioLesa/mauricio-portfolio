@@ -61,7 +61,7 @@ This is a single Next.js app at the repo root (`src/`, `content/`, `evals/`, `sc
   - **Set by CDK on the Lambda function, not by you** (listed for reference): `AWS_LAMBDA_EXEC_WRAPPER` (`/opt/bootstrap`, starts the Lambda Web Adapter), `AWS_LWA_INVOKE_MODE` (`response_stream`, streams responses) and `AWS_LWA_PORT` (`3000`, the port the Next.js server listens on).
 
   Any task that introduces a new environment variable must add it here in the same change (constitution Principle V).
-- [ ] T009 [P] Add npm scripts to `package.json`:
+- [X] T009 [P] Add npm scripts to `package.json`:
   - `dev`, `build`, `start`
   - `typecheck` (`tsc --noEmit`), `lint`, `test` (`vitest run`), `test:e2e` (`playwright test`)
   - `content:check` (`tsx scripts/check-content.ts`)
@@ -69,7 +69,7 @@ This is a single Next.js app at the repo root (`src/`, `content/`, `evals/`, `sc
   - `eval` (`tsx evals/run.ts`)
   - `package:lambda` (`tsx scripts/package-lambda.ts`)
 - [ ] T010 [P] Create `.github/workflows/ci.yml`. On pull request and on push to `main`, run `npm ci`, `typecheck`, `lint`, `content:check`, `index:build -- --fake`, `test` and `test:e2e` with `AWS_MODE=fake`. It has no AWS credentials. Any failure blocks the merge (Principle I).
-- [ ] T011 [P] Scaffold the CDK app:
+- [X] T011 [P] Scaffold the CDK app:
   - `infra/package.json` with exact versions of `aws-cdk-lib`, `constructs` and `aws-cdk`.
   - `infra/tsconfig.json` (strict) and `infra/cdk.json`.
   - `infra/bin/portfolio.ts`, which creates `PortfolioStack` in `us-east-2` with `crossRegionReferences: true`. The optional `CertificateStack` (`us-east-1`, only when `DOMAIN_NAME` is set) is wired in by T033 in the optional phase.
@@ -122,27 +122,27 @@ infrastructure for the skeleton site.
   - CSS colour tokens with AA contrast, and a visible `:focus-visible` outline.
 - [X] T029 [P] Create `src/components/nav-items.ts`, the ordered list of the 9 pages with `{ href, label }`, so a future 10th page is a one-line change. Create `src/components/Nav.tsx`, a server component whose mobile menu uses `<details>`/`<summary>` so it works without JavaScript. It sets `aria-current="page"` on the current page.
 - [ ] T030 [P] Create `src/app/not-found.tsx` and `src/app/error.tsx`, accessible error pages that link back to Home.
-- [ ] T031 In `infra/lib/portfolio-stack.ts`, create the DynamoDB table `Portfolio`: `PK` and `SK` strings, `PAY_PER_REQUEST`, TTL attribute `ttl`, point-in-time recovery off, `RemovalPolicy.RETAIN`. Expose it as a stack property for later tasks.
-- [ ] T113 In `infra/lib/portfolio-stack.ts`, create the static assets S3 bucket: Block Public Access, SSE-S3, `enforceSSL`. Expose it as a stack property.
-- [ ] T114 In `infra/lib/portfolio-stack.ts`, create the Lambda function and its URL:
+- [X] T031 In `infra/lib/portfolio-stack.ts`, create the DynamoDB table `Portfolio`: `PK` and `SK` strings, `PAY_PER_REQUEST`, TTL attribute `ttl`, point-in-time recovery off, `RemovalPolicy.RETAIN`. Expose it as a stack property for later tasks.
+- [X] T113 In `infra/lib/portfolio-stack.ts`, create the static assets S3 bucket: Block Public Access, SSE-S3, `enforceSSL`. Expose it as a stack property.
+- [X] T114 In `infra/lib/portfolio-stack.ts`, create the Lambda function and its URL:
   - Function: `nodejs22.x`, arm64, 1024 MB, 30 s timeout, `reservedConcurrentExecutions: 10`.
   - The AWS Lambda Web Adapter layer, with a pinned version ARN for `us-east-2` and a comment naming the version.
   - Environment: `AWS_LAMBDA_EXEC_WRAPPER=/opt/bootstrap` (required with the Web Adapter layer and zip packaging, or the function won't start), `AWS_LWA_INVOKE_MODE=response_stream`, `AWS_LWA_PORT=3000`; handler `run.sh`; code from `infra/.build/lambda`.
   - Function URL with `authType: AWS_IAM` and `invokeMode: RESPONSE_STREAM`.
   - ⚠️ **Decide at task time (analysis G3)**: whether to set the Lambda log group's retention to 30 days, to match the spec's 30-day log promise. Ask the owner before implementing.
-- [ ] T115 In `infra/lib/portfolio-stack.ts`, create the CloudFront distribution on the default `*.cloudfront.net` domain:
+- [X] T115 In `infra/lib/portfolio-stack.ts`, create the CloudFront distribution on the default `*.cloudfront.net` domain:
   - OAC for the static bucket and for the function URL.
   - Behaviors: `/_next/static/*` → S3 with immutable caching; `/api/*` → Lambda with `CACHING_DISABLED` and all methods allowed; default `/*` → Lambda with a cache policy that follows origin `Cache-Control` and excludes query strings from the cache key (no page reads them).
   - An origin request policy that forwards `CloudFront-Viewer-Address`.
   - A custom domain is added only by T033.
-- [ ] T116 In `infra/lib/portfolio-stack.ts`:
+- [X] T116 In `infra/lib/portfolio-stack.ts`:
   - Add a `BucketDeployment` of `.next/static` → `_next/static/` and `public/` → `/`, with invalidation of the distribution.
   - Grant the Lambda role only `dynamodb:GetItem`, `PutItem`, `UpdateItem`, `Query` and `DeleteItem` on the table ARN.
   - Set Lambda env `AWS_MODE=real`, `DYNAMO_TABLE_NAME`, the cap and limit values, and `NEXT_PUBLIC_SITE_URL` (the distribution's domain).
-- [ ] T032 [P] Create `infra/lib/budget.ts`, a `CfnBudget` cost budget of $10/month with email notifications on ACTUAL spend at $5 and $8 to `BUDGET_ALERT_EMAIL`, which comes from CDK context or env and is never hard-coded (FR-033). Wire it into `PortfolioStack`.
-- [ ] T034 Create `scripts/package-lambda.ts`. After `next build`, it copies `.next/standalone/` into `infra/.build/lambda/` and writes `run.sh` (`exec node server.js`). It copies `content/.generated/index.json` next to them **if it exists**, warning when it's missing; the index only becomes required with US3, and `release:check` enforces that. It does not copy `private/`.
+- [X] T032 [P] Create `infra/lib/budget.ts`, a `CfnBudget` cost budget of $10/month with email notifications on ACTUAL spend at $5 and $8 to `BUDGET_ALERT_EMAIL`, which comes from CDK context or env and is never hard-coded (FR-033). Wire it into `PortfolioStack`.
+- [X] T034 Create `scripts/package-lambda.ts`. After `next build`, it copies `.next/standalone/` into `infra/.build/lambda/` and writes `run.sh` (`exec node server.js`). It copies `content/.generated/index.json` next to them **if it exists**, warning when it's missing; the index only becomes required with US3, and `release:check` enforces that. It does not copy `private/`.
   - ⚠️ **Decide at task time (analysis I2)**: Next.js standalone output doesn't include `public/` or `.next/static/`, so favicon and images would 404 from Lambda. Options: (A) copy both into the package here; (B) also add CloudFront behaviors to S3 for `public/` paths in T115. Ask the owner before implementing.
-- [ ] T035 Create CDK assertion tests in `infra/test/portfolio-stack.test.ts`, checking:
+- [X] T035 Create CDK assertion tests in `infra/test/portfolio-stack.test.ts`, checking:
   - no IAM statement uses `Action: "*"` or `Resource: "*"`;
   - the static bucket has Block Public Access;
   - the function URL uses `AWS_IAM` and `RESPONSE_STREAM`;
@@ -193,8 +193,8 @@ required content, and "Contact me" opens an email to the public email (quickstar
 (Lambda, Web Adapter, OAC, caching) is proven before the larger stories. **The agent writes code
 and notes only. The owner runs every AWS command.**
 
-- [ ] T117 Run `npm run build` and `npm run package:lambda`, then `npx cdk synth` in `infra/`. Synth is local and creates no AWS resources. Fix any errors in `scripts/package-lambda.ts` or `infra/lib/portfolio-stack.ts`, and confirm `infra/.build/lambda/` contains `server.js`, `run.sh` and `.next/`, and no `private/` content. Confirm `npm run test` (including the CDK assertions in `infra/test/portfolio-stack.test.ts`) passes.
-- [ ] T118 Write the MVP hand-off note in `specs/001-portfolio-site/checklists/deploy-handoff-mvp.md`. It contains:
+- [X] T117 Run `npm run build` and `npm run package:lambda`, then `npx cdk synth` in `infra/`. Synth is local and creates no AWS resources. Fix any errors in `scripts/package-lambda.ts` or `infra/lib/portfolio-stack.ts`, and confirm `infra/.build/lambda/` contains `server.js`, `run.sh` and `.next/`, and no `private/` content. Confirm `npm run test` (including the CDK assertions in `infra/test/portfolio-stack.test.ts`) passes.
+- [X] T118 Write the MVP hand-off note in `specs/001-portfolio-site/checklists/deploy-handoff-mvp.md`. It contains:
   - **Resources created**, each with its plan.md cost line: the DynamoDB table `Portfolio` ($0.01), the static S3 bucket ($0.03), the Lambda function and function URL ($0.00), the CloudFront distribution with OAC, cache, origin-request and response policies ($0.00), the BucketDeployment helper Lambda ($0.00), the IAM roles ($0.00) and the AWS Budget ($0.00). The MVP total is about $0.05/month.
   - **Prerequisites**: `aws sso login --profile portfolio`; `npx cdk bootstrap aws://<account>/us-east-2` if the account isn't bootstrapped (this creates the CDK staging bucket and roles, at about $0); and `BUDGET_ALERT_EMAIL` as CDK context.
   - **Known gap**: "Download CV" returns 404 until US2 is deployed.
