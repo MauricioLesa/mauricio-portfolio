@@ -46,6 +46,12 @@ export interface PortfolioStackProps extends StackProps {
    * so it comes from CDK context `siteUrl` (or `https://<DOMAIN_NAME>`). Omitted when unknown.
    */
   readonly siteUrl?: string;
+  /**
+   * Reserved concurrency for the server function: the cost brake from research.md R5 (default 10).
+   * 0 reserves nothing. Needed while the account's Lambda concurrency quota is 10, because AWS keeps
+   * at least 10 unreserved; at that quota the whole account is capped at 10 anyway.
+   */
+  readonly reservedConcurrency?: number;
   /** Lambda code: a zip written by `npm run package:lambda`. Overridable for tests. */
   readonly lambdaCodePath?: string;
   /** Next.js build output `.next/static`. Overridable for tests. */
@@ -104,6 +110,11 @@ export class PortfolioStack extends Stack {
     };
     if (props.siteUrl) environment.NEXT_PUBLIC_SITE_URL = props.siteUrl;
 
+    const reservedConcurrency = props.reservedConcurrency ?? 10;
+    if (!Number.isInteger(reservedConcurrency) || reservedConcurrency < 0) {
+      throw new Error(`reservedConcurrency must be a whole number >= 0 (got ${reservedConcurrency})`);
+    }
+
     const lambdaAsset = new s3assets.Asset(this, 'ServerCode', {
       path: props.lambdaCodePath ?? path.join(REPO_ROOT, 'infra', '.build', 'lambda.zip'),
     });
@@ -116,7 +127,7 @@ export class PortfolioStack extends Stack {
       architecture: lambda.Architecture.ARM_64,
       memorySize: 1024,
       timeout: Duration.seconds(30),
-      reservedConcurrentExecutions: 10,
+      reservedConcurrentExecutions: reservedConcurrency > 0 ? reservedConcurrency : undefined,
       handler: 'run.sh',
       code: lambda.Code.fromBucket(lambdaAsset.bucket, lambdaAsset.s3ObjectKey),
       layers: [lambda.LayerVersion.fromLayerVersionArn(this, 'WebAdapterLayer', WEB_ADAPTER_LAYER_ARN)],

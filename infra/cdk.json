@@ -5,6 +5,8 @@
     "exclude": ["cdk.out", ".build", "node_modules", "test"]
   },
   "context": {
+    "//reservedConcurrency": "0 = no reservation, because this account's Lambda concurrency quota is 10 (AWS keeps 10 unreserved). Remove this and the next line once the quota is raised; the stack then reserves 10.",
+    "reservedConcurrency": 0,
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/core:target-partitions": ["aws"],

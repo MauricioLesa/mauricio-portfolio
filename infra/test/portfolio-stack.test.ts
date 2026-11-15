@@ -11,6 +11,7 @@ type Statement = { Action?: unknown; Resource?: unknown; NotAction?: unknown };
 
 let workDir: string;
 let template: Template;
+let buildDirs: { lambdaCodePath: string; nextStaticDir: string; publicDir: string };
 
 beforeAll(() => {
   // Stand-ins for the build output, so the tests don't need `next build` or `package:lambda`.
@@ -23,16 +24,19 @@ beforeAll(() => {
   writeFileSync(join(nextStatic, 'app.js'), '');
   writeFileSync(join(publicDir, 'favicon.svg'), '');
 
-  const app = new App();
-  const stack = new PortfolioStack(app, 'TestStack', {
+  buildDirs = { lambdaCodePath: lambdaDir, nextStaticDir: nextStatic, publicDir };
+  template = synth();
+});
+
+function synth(extra: { reservedConcurrency?: number } = {}): Template {
+  const stack = new PortfolioStack(new App(), 'TestStack', {
     env: { region: 'us-east-2' },
     budgetAlertEmail: 'alerts@example.com',
-    lambdaCodePath: lambdaDir,
-    nextStaticDir: nextStatic,
-    publicDir,
+    ...buildDirs,
+    ...extra,
   });
-  template = Template.fromStack(stack);
-});
+  return Template.fromStack(stack);
+}
 
 afterAll(() => rmSync(workDir, { recursive: true, force: true }));
 
@@ -122,8 +126,20 @@ describe('PortfolioStack', () => {
     });
   });
 
-  it('reserves a concurrency of 10', () => {
+  it('reserves a concurrency of 10 by default', () => {
     expect(serverFunction().Properties!.ReservedConcurrentExecutions).toBe(10);
+  });
+
+  it('reserves nothing when reservedConcurrency is 0 (account quota of 10)', () => {
+    const fns = Object.values(synth({ reservedConcurrency: 0 }).findResources('AWS::Lambda::Function')) as Resource[];
+    const fn = fns.find((f) => f.Properties?.Handler === 'run.sh');
+    expect(fn?.Properties).toBeDefined();
+    expect(fn!.Properties).not.toHaveProperty('ReservedConcurrentExecutions');
+  });
+
+  it('rejects a negative or fractional reservedConcurrency', () => {
+    expect(() => synth({ reservedConcurrency: -1 })).toThrow(/reservedConcurrency/);
+    expect(() => synth({ reservedConcurrency: 2.5 })).toThrow(/reservedConcurrency/);
   });
 
   it('keeps function logs for 30 days', () => {

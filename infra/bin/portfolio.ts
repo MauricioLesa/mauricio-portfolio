@@ -15,6 +15,11 @@ const domainName = setting('domainName', 'DOMAIN_NAME');
 const budgetAlertEmail = setting('budgetAlertEmail', 'BUDGET_ALERT_EMAIL');
 const siteUrl = setting('siteUrl', 'NEXT_PUBLIC_SITE_URL') ?? (domainName ? `https://${domainName}` : undefined);
 
+// CDK context: a number from cdk.json, or a string from `-c reservedConcurrency=…`. Unset → stack default (10).
+const reservedConcurrencySetting: unknown = app.node.tryGetContext('reservedConcurrency');
+const reservedConcurrency =
+  reservedConcurrencySetting === undefined ? undefined : Number(reservedConcurrencySetting);
+
 if (!budgetAlertEmail) {
   throw new Error(
     'BUDGET_ALERT_EMAIL is required (FR-033). Pass `-c budgetAlertEmail=you@example.com` or set the BUDGET_ALERT_EMAIL env var.',
@@ -31,5 +36,6 @@ new PortfolioStack(app, 'PortfolioStack', {
   crossRegionReferences: Boolean(domainName),
   budgetAlertEmail,
   siteUrl,
+  reservedConcurrency,
   description: 'Mauricio portfolio: Next.js on Lambda (Web Adapter) behind CloudFront, S3, DynamoDB, budget',
 });

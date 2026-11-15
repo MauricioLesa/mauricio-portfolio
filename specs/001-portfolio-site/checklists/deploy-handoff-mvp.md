@@ -18,7 +18,7 @@ All in `us-east-2` except the global ones (CloudFront, IAM, Budgets). Costs are 
 |---|---|---|
 | DynamoDB table `Portfolio` | `PK`/`SK`, on-demand, TTL `ttl`, PITR off, **retained** on stack delete | $0.01 |
 | S3 static bucket | Block Public Access, SSE-S3, SSL enforced, read only by CloudFront (OAC); holds `_next/static/*` and `public/*`; **retained** on stack delete | $0.03 (S3 line, shared with CDK assets) |
-| Lambda function + function URL | Node 22, arm64, 1024 MB, 30 s, reserved concurrency 10, Web Adapter layer `LambdaAdapterLayerArm64:30`; URL is `AWS_IAM` + `RESPONSE_STREAM` | $0.00 (always-free tier) |
+| Lambda function + function URL | Node 22, arm64, 1024 MB, 30 s, reserved concurrency 10 (off while the account quota is 10, see section 3), Web Adapter layer `LambdaAdapterLayerArm64:30`; URL is `AWS_IAM` + `RESPONSE_STREAM` | $0.00 (always-free tier) |
 | CloudWatch log group for the function | 30-day retention (owner decision G3) | $0.00 (5 GB free) |
 | CloudFront distribution | `*.cloudfront.net`, PriceClass 100, HTTP/2+3; OAC for S3 and for the function URL; behaviors `/_next/static/*` → S3, `/api/*` → Lambda (no cache), `/*` → Lambda (follows origin `Cache-Control`); 1 cache policy, 2 origin-request policies | $0.00 (always-free tier) |
 | BucketDeployment helper Lambda (+ AWS CLI layer) | Copies `.next/static` and `public/` into the bucket on deploy | $0.00 |
@@ -35,14 +35,13 @@ concurrency (the CDK tests assert this).
 
 ## 2. Prerequisites (once)
 
-- [ ] `aws sso login --profile portfolio`
-- [ ] **Lambda concurrency quota.** The function reserves 10 concurrent executions, and AWS keeps at
-      least 10 unreserved, so the account limit must be **≥ 20**. New accounts sometimes start at 10.
-      Check *Service Quotas → AWS Lambda → Concurrent executions* in `us-east-2`; if it's 10, request
-      an increase (free) before deploying, or the deploy fails.
+- [ ] `aws sso login --profile dev`
+- [ ] **Lambda concurrency quota.** This account's limit is **10** (checked 2026-11-14), so
+      `infra/cdk.json` sets `"reservedConcurrency": 0` (no reservation; see section 3). Request an
+      increase to 1000 (free) in *Service Quotas → AWS Lambda → Concurrent executions* in `us-east-2`.
 - [ ] **CDK bootstrap**, if `us-east-2` isn't bootstrapped yet (this creates the CDK staging bucket and
       roles, at about $0):
-      `npx cdk bootstrap aws://<account-id>/us-east-2 --profile portfolio`
+      `npx cdk bootstrap aws://<account-id>/us-east-2 --profile dev`
 - [ ] **`BUDGET_ALERT_EMAIL`**: pass it as CDK context (`-c budgetAlertEmail=<you>`) or set the env var.
       Synth refuses to run without it (FR-033). CDK doesn't read `.env.local`; keep the address out of
       committed files (`cdk.json`, `cdk.context.json`).
@@ -53,6 +52,12 @@ concurrency (the CDK tests assert this).
 ---
 
 ## 3. Known gaps
+
+- **No reserved concurrency while the account quota is 10.** AWS keeps 10 executions unreserved, so
+  reserving any amount fails the deploy ("decreases account's UnreservedConcurrentExecution below its
+  minimum value of [10]"). At a quota of 10 the account caps the function at 10 anyway. **Once the
+  quota is raised, delete the two `reservedConcurrency` lines from `infra/cdk.json` and redeploy**, so
+  the function reserves 10 again (the cost brake from research.md R5).
 
 - **"Download CV" returns 404** until US2 (T049–T056) is deployed. The CV *page* works.
 - **`NEXT_PUBLIC_SITE_URL` isn't set on the first deploy.** The function can't read the distribution's
@@ -87,7 +92,7 @@ concurrency (the CDK tests assert this).
 From the repo root:
 
 ```sh
-aws sso login --profile portfolio
+aws sso login --profile dev
 npm ci
 (cd infra && npm ci)
 npm run test                      # 32 tests, including the CDK assertions
@@ -98,9 +103,9 @@ npm run package:lambda            # → infra/.build/lambda.zip (≈ 10 MB)
 From `infra/`:
 
 ```sh
-npx cdk diff   --profile portfolio -c budgetAlertEmail=<you@example.com>
+npx cdk diff   --profile dev -c budgetAlertEmail=<you@example.com>
 # Review the diff: resources should match section 1, and the IAM changes should match section 1's roles.
-npx cdk deploy --profile portfolio -c budgetAlertEmail=<you@example.com>
+npx cdk deploy --profile dev -c budgetAlertEmail=<you@example.com>
 # Note the SiteUrl output: https://<id>.cloudfront.net
 ```
 
