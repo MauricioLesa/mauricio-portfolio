@@ -11,7 +11,8 @@ CloudFront sends `/api/*` to Lambda **with caching off**. All responses include
 
 ## POST `/api/chat`
 
-Sends one visitor message and streams the answer and its trace.
+Sends one visitor message and streams the tool steps, the answer and its trace (amended
+2026-11-21: `step` events replace the `retrieval` event).
 
 **Request headers**
 
@@ -28,18 +29,19 @@ Sends one visitor message and streams the answer and its trace.
 }
 ```
 
-**Response** `200 text/event-stream`. Events arrive in this order:
+**Response** `200 text/event-stream` (Server-Sent Events). Events arrive in this order:
 
 | Event | Data | When |
 |---|---|---|
 | `meta` | `{ conversationId, turnId, remainingMessages }` | First |
-| `retrieval` | `{ passages: { passageId, source: { docType, docId, section, title }, score, excerpt }[] }` | After retrieval, before any text |
-| `delta` | `{ text }` | Repeated while the answer streams |
-| `done` | `{ outcome: "answered" \| "refused" \| "blocked", citations: passageId[], model, usage: { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens }, costUsd, costBreakdownUsd: { chat, retrieval }, truncated, latencyMs: { firstToken, retrieval, total } }` | Last, on success |
+| `step` | `{ round, tool: "list_projects" \| "get_project" \| "get_profile", input, isError }` | Once per tool call, right after it runs (at most 4 rounds) |
+| `delta` | `{ text }` | Repeated while the model writes text (mostly the final answer) |
+| `done` | `{ outcome: "answered" \| "refused" \| "blocked" \| "incomplete", answer?, citations: { ref, label }[], trace: { model, rounds, modelCalls, usage: { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens }, costUsd, truncated, latencyMs: { firstToken, total, model, tools } } }` | Last, on success |
 | `error` | `{ code, message, retryable }` | Last, on failure after the stream has started |
 
-If `blocked`, the `done` event carries `replacementText`. The client replaces the partial answer
-with it.
+If `blocked` or `incomplete`, `done` carries `answer` (the replacement or fixed text), and the
+client replaces any partial answer with it. A citation looks like
+`{ ref: "project:code-migration", label: "Case study: Code migration" }`.
 
 **Responses without a stream** (JSON body `{ code, message, retryAfterSeconds? }`):
 
@@ -51,8 +53,9 @@ with it.
 | 429 | `rate_limited` | 20 messages/hour per visitor (FR-020). Includes `retryAfterSeconds`. |
 | 503 | `assistant_unavailable` | The daily or monthly spending cap was reached (FR-021). Includes `retryAfterSeconds` until the cap resets. |
 
-**Timeouts**: if no `delta` arrives within 15 s, the server sends
-`error { code: "provider_timeout", retryable: true }` (spec edge case).
+**Timeouts**: each model call has a 15 s timeout and the whole turn 25 s. On a timeout the server
+sends `error { code: "provider_timeout", retryable: true }`; a Bedrock failure after the SDK's
+retries sends `error { code: "provider_error", retryable: true }` (spec edge case).
 
 ---
 

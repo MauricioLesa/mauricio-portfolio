@@ -55,15 +55,17 @@ frontmatter has page-specific fields, all validated:
 - `guardrails`: `categories[]` with `{ id, reason, examples[{ prompt, response }] }`. It must cover
   the 4 categories, with at least 1 example each (FR-022).
 
-### Source passage (generated, `content/.generated/index.json`, gitignored)
+### Assistant tools (code in `src/server/assistant/tools.ts`; amended 2026-11-21)
 
-| Field | Type | Notes |
+There is no generated index. The assistant reads content only through three read-only tools,
+which call the content functions above. Each tool definition sets `strict: true`, and its
+`input_schema` has `additionalProperties: false`.
+
+| Tool | Input (zod) | Returns (kept small) |
 |---|---|---|
-| `id` | string | `<docId>#<sectionSlug>#<n>` |
-| `source` | `{ docType: "cv" \| "project", docId, section, title }` | Shown in the trace panel and in citations |
-| `text` | string | ~300–500 tokens |
-| `embedding` | number[512] | Titan Text Embeddings V2 |
-| `indexVersion` | string | A hash of the content, so a stale index can be detected |
+| `list_projects` | `{ tech?: string }`, a case-insensitive match on `stack[]` | `{ slug, title, summary, stack[] }[]`; no filter returns every project |
+| `get_project` | `{ slug: string }`, a slug from `list_projects` | `{ slug, title, summary, stack[], sections: { problem, architecture, tradeOffs, results } }`, each section trimmed to about 1,200 characters; an unknown slug is an error result |
+| `get_profile` | `{ section: "summary" \| "skills" \| "experience" \| "education" \| "contact" }` | That CV section as short text; `contact` returns only `publicEmail` (FR-018) |
 
 ---
 
@@ -82,7 +84,7 @@ Billing is on-demand, with point-in-time recovery off, which is acceptable for t
 | **Conversation turn (trace log)** | `TRACE#<yyyy-mm-dd>` | `<isoTimestamp>#<turnId>` | see below | 30 days |
 | **Eval run** | `EVALRUN` | `<startedAt>#<runId>` | see below | none |
 | **Eval case result** | `EVALRUN#<runId>` | `CASE#<caseId>` | see below | none |
-| **Eval trace (AI call log for eval runs)** | `EVALTRACE#<runId>` | `<isoTimestamp>#<caseId>#<callType>` | `callType` (`embedding` \| `chat` \| `judge`), `model`, `usage`, `costUsd`, `latencyMs` | none |
+| **Eval trace (AI call log for eval runs)** | `EVALTRACE#<runId>` | `<isoTimestamp>#<caseId>#<callType>` | `callType` (`chat` \| `judge`), `model`, `usage`, `costUsd`, `latencyMs` | none |
 
 ### Conversation turn (trace log)
 
@@ -93,26 +95,28 @@ This record is the constitution's AI log (FR-015) and the source of the trace pa
 | `turnId`, `conversationId` | string (UUID) |
 | `question` | string (≤ 1,000 characters). Never stores IP or visitor identity. |
 | `answer` | string |
-| `outcome` | `"answered" \| "refused" \| "blocked" \| "error" \| "limited" \| "unavailable"` |
-| `retrieved` | `{ passageId, source, score }[]` |
+| `outcome` | `"answered" \| "refused" \| "blocked" \| "incomplete" \| "error" \| "limited" \| "unavailable"` |
+| `toolCalls` | `{ round, tool, input, isError, latencyMs }[]` |
+| `rounds` | number (0–4) |
+| `modelCalls` | number (usually 2–3) |
 | `model` | string (Bedrock model ID) |
-| `usage` | `{ inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens }` |
-| `costUsd` | number: chat + retrieval (embedding) cost, from the price table version `pricingVersion` |
-| `costBreakdownUsd` | `{ chat, retrieval }` |
+| `usage` | `{ inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens }`, summed over the turn's model calls |
+| `costUsd` | number: the sum over all model calls in the turn, from the price table version `pricingVersion` |
 | `truncated` | boolean: the answer hit `max_tokens` and was ended with "(answer shortened)" |
-| `latencyMs` | `{ firstToken, total, retrieval }` |
+| `latencyMs` | `{ firstToken, total, model, tools }` |
 | `errorCode` | string, optional |
-| `reason` | Only on blocked traces (`limited` / `unavailable`): `rate_limited` \| `message_too_long` \| `conversation_closed` \| `daily_cap` \| `monthly_cap`. Blocked traces have no `model`, `usage`, `costUsd` or `retrieved` fields. |
+| `reason` | Only on blocked traces (`limited` / `unavailable`): `rate_limited` \| `message_too_long` \| `conversation_closed` \| `daily_cap` \| `monthly_cap`. Blocked traces have no `model`, `usage`, `costUsd` or `toolCalls` fields. |
 
 **Outcome transitions** (one per turn):
 
 ```text
 received ─► limited      (rate limit / conversation limit / message too long: no model call)
          ─► unavailable  (spending cap reached: no model call)
-         ─► retrieving ─► generating ─► answered
-                                     ├► refused   (refusal marker or stop_reason "refusal")
-                                     ├► blocked   (output filter tripped)
-                                     └► error     (provider failure or timeout)
+         ─► tool loop (≤ 4 rounds) ─► answered
+                                   ├► refused     (refusal marker or stop_reason "refusal")
+                                   ├► blocked     (output filter tripped)
+                                   ├► incomplete  (round cap, or max_tokens before a final answer)
+                                   └► error       (provider failure or timeout)
 ```
 
 ### Eval run (summary)
@@ -147,9 +151,10 @@ received ─► limited      (rate limit / conversation limit / message too long
 
 ## 3. Relationships
 
-- A **Project** and the **CV** are split into many **Source passages** at build time.
+- The assistant reads **Projects** and the **CV** through tools at question time; nothing is
+  precomputed.
 - A **Conversation** has 1–10 visitor messages. Each produces one **Conversation turn** record,
-  which references many **Source passages** by `passageId`.
+  which lists the **Tool calls** it made.
 - An **Eval run** has many **Eval case results**, and each result references one **Eval case**
   by `caseId`.
 - A **CV grant** is standalone. Each one belongs to the visitor who requested it, recorded only as

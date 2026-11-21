@@ -27,10 +27,10 @@ the build.
 ```ts
 type ChatEvent =
   | { type: "meta"; conversationId: string; turnId: string; remainingMessages: number }
-  | { type: "retrieval"; passages: RetrievedPassage[] }
+  | { type: "step"; round: number; tool: ToolName; input: unknown; isError: boolean }
   | { type: "delta"; text: string }
-  | { type: "done"; outcome: "answered" | "refused" | "blocked"; citations: string[]; replacementText?: string; trace: TurnTrace }
-  | { type: "error"; code: string; message: string; retryable: boolean };
+  | { type: "done"; outcome: "answered" | "refused" | "blocked" | "incomplete"; answer?: string; citations: Citation[]; trace: TurnTrace }
+  | { type: "error"; code: "provider_timeout" | "provider_error"; message: string; retryable: boolean };
 
 type ChatResult =
   | { ok: true; events: AsyncIterable<ChatEvent> }
@@ -38,11 +38,18 @@ type ChatResult =
 
 chat(input: { conversationId?: string; message: string; visitorHash: string; budget?: "site" | "eval" }, deps?: AssistantDeps): Promise<ChatResult>
 
-retrieve(question: string, k?: number): Promise<RetrievedPassage[]>   // embeddings + cosine search
+interface ChatModel {                     // Bedrock implementation (streams), or the scripted fake in tests
+  create(params: { system: string; tools: Tool[]; messages: MessageParam[]; max_tokens: number },
+         opts?: { onText?: (delta: string) => void; signal?: AbortSignal }): Promise<Message>
+}
+runAgent(input: { system: string; history: MessageParam[]; question: string }, model: ChatModel,
+         opts?: { maxRounds?: number; maxTokens?: number; onEvent?: (e: AgentEvent) => void }): Promise<AgentResult>
+                                          // the tool loop (amended 2026-11-21); AgentEvent is `step` or `delta`
+runTool(name: string, input: unknown): Promise<{ content: string; isError: boolean }>  // zod-validated, never throws
 estimateCostUsd(model: string, usage: Usage): number                   // versioned price table
 ```
 
-`AssistantDeps` covers the model client, the embedder, the store, the clock and the logger. These
+`AssistantDeps` covers the model client (`ChatModel`), the store, the clock and the logger. These
 are injected so Vitest can test `chat()` with fakes and no AWS calls.
 
 ## CV (`src/server/cv/`)

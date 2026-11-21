@@ -104,6 +104,8 @@ be changed without code changes.
 
 ## R3. Retrieval over the CV and case studies
 
+> **Superseded on 2026-11-21 by R13** (tool calling). Kept for the record.
+
 **Decision**: Precomputed embeddings with in-memory search. No vector database.
 
 - **Build time** (`scripts/build-index.ts`):
@@ -287,3 +289,25 @@ read metadata, and pages would import files directly, which the requested struct
 - **Costs**: a Route 53 hosted zone is **$0.50/month**, which is a paid always-on resource and
   appears in the cost table. Registering a `.com` costs ~$14–15/year (~$1.25/month).
 - **Without a domain**: the site runs on the `*.cloudfront.net` domain at $0.
+
+## R13. Tool calling instead of retrieval (amendment 2026-11-21)
+
+- **Decision**: the assistant reads content through three narrow, read-only tools
+  (`list_projects`, `get_project`, `get_profile`) in a hand-written loop of at most 4 tool rounds,
+  and the final answer still streams over SSE. No embeddings index.
+- **Rationale**:
+  - The content is small and structured (one CV, 3–8 case studies with fixed sections), so an
+    exact lookup by slug or section is more reliable than similarity search.
+  - No build step and no index to keep in sync with the content, so the stale-index failure mode
+    disappears, and so do one model (Titan) and one dependency.
+  - The steps (tool names and arguments) are easy to show in the trace panel and to assert in
+    tests and evals.
+  - Read-only tools limit prompt injection: a tricked model can only read public content.
+- **Trade-offs**: 2–3 model calls per answer instead of 1, so the first words arrive later (hence
+  SC-002's 6 s target, with tool steps shown meanwhile) and about twice the token cost, still well under the caps. Synonyms
+  ("message queues" → RabbitMQ) now depend on the model: `list_projects` with no filter returns
+  every project's stack, so the model can match it itself.
+- **Hand-written loop, not the SDK's beta tool runner**: the round cap, the steps list and the
+  trace need control over each round, and the loop is short.
+- **Alternative kept for later**: retrieval (R3), if the content grows past what a few tool
+  results can carry.

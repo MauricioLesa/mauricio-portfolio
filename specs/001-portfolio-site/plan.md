@@ -13,16 +13,45 @@ The site is a portfolio of nine pages plus an AI assistant grounded in the CV an
 - **Hosting**: a single Lambda function running the Next.js standalone server through the Lambda
   Web Adapter, with response streaming. CloudFront sits in front, and S3 serves static assets and
   the private CV PDF. Everything runs in `us-east-2`.
-- **Assistant**: calls **Claude Haiku 5.5 on Bedrock**. It retrieves passages from a precomputed
-  Titan embeddings index held in memory.
+- **Assistant**: calls **Claude Haiku 5.5 on Bedrock** with three read-only tools over the site's
+  content, in a loop of at most 4 tool rounds, and streams steps and the answer over SSE (amended 2026-11-21;
+  it was retrieval over a Titan embeddings index, see research R13 and "Assistant design" below).
 - **Storage**: rate limits, spending caps, CV link grants, traces and eval results go in one
   on-demand DynamoDB table.
 - **Analytics**: Umami Cloud's free plan, which is cookieless.
 - **Infrastructure**: AWS CDK in TypeScript. The owner runs every `cdk diff` and `cdk deploy`.
 
-**Estimated cost**: about **$2.15 per month** typically, or $3.90 with a custom domain. At the
-worst case, when every cap is reached, it is **about $8.50**. Details are in the
+**Estimated cost**: about **$3.00 per month** typically, or $4.75 with a custom domain. At the
+worst case, when every cap is reached, it is **about $8.80** (updated 2026-11-21 for 2–3 model
+calls per answer). Details are in the
 [cost table](#cost-estimate-monthly) below.
+
+### Assistant design (amendment 2026-11-21)
+
+- **Client**: the existing `@anthropic-ai/bedrock-sdk` (`AnthropicBedrockMantle`), not the Vercel
+  AI SDK. The `Message`, `MessageParam` and `Tool` types come from `@anthropic-ai/sdk`, which the
+  Bedrock SDK already installs (1.8.0). It becomes a direct dependency, pinned to `1.8.0`, because
+  importing a package you don't declare breaks the constitution's dependency rule.
+- **Model ID from config**: `BEDROCK_CHAT_MODEL_ID`, never hard-coded. Bedrock IDs take the
+  `anthropic.` prefix; the exact ID or inference profile is confirmed in the console before deploy.
+- **`ChatModel` interface** with a Bedrock implementation and a scripted fake, so the loop is
+  tested in CI with no AWS calls and no cost.
+- **Streaming**: every model call uses `messages.stream`. `ChatModel.create()` passes each text
+  delta to an `onText` callback and returns `finalMessage()`, so the loop stays a plain
+  `await` per round, and the fake model can be scripted the same way. The route turns the loop's
+  `step` and `delta` callbacks into SSE events.
+- **Request settings**: `max_tokens: 1024` per call,
+  `thinking: { type: "disabled" }` (owner decision U1 still holds), `output_config: { effort:
+  "low" }` as the starting point for a chat route (Haiku 5.5 defaults to `medium`), and
+  `strict: true` on every tool. The evals check these choices.
+- **Limits**: 4 tool rounds per message (FR-040), 1,000-character input (FR-020), 15 s per model
+  call and 25 s per turn.
+- **Loop rules**: check `stop_reason` before reading content; send the assistant content back
+  unchanged; answer every `tool_use` with a `tool_result` matched by `tool_use_id`, all in one user
+  message; a failing tool returns `is_error: true` instead of throwing.
+- **Traces**: `TRACE#<yyyy-mm-dd>` / `<isoTimestamp>#<turnId>` in the `Portfolio` table with a
+  30-day TTL, now with `toolCalls[]`, `rounds` and `modelCalls` (data-model.md).
+- **No new always-on resources.** The embeddings index, Titan and the `index:build` script go away.
 
 ## Technical Context
 
@@ -34,8 +63,9 @@ arm64).
 - Validation: `zod`.
 - Styling: `tailwindcss`, `@tailwindcss/turbopack`.
 - Content: `gray-matter`, `next-mdx-remote`.
-- AI: `@anthropic-ai/bedrock-sdk` for Claude. `@aws-sdk/client-bedrock-runtime` for Titan
-  embeddings.
+- AI: `@anthropic-ai/bedrock-sdk` for Claude, and `@anthropic-ai/sdk` for its types (see
+  "Assistant design"). `@aws-sdk/client-bedrock-runtime` was only for Titan embeddings and is
+  removed by the 2026-11-21 amendment.
 - AWS: `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` for storage. `@aws-sdk/client-s3`
   and `@aws-sdk/s3-request-presigner` for the CV links. `@aws-sdk/client-ssm` for the secret.
 - Infrastructure: `aws-cdk-lib`, `constructs`, `aws-cdk`.
@@ -45,7 +75,6 @@ arm64).
 
 **Storage**:
 - MDX files in `content/`.
-- A generated embeddings index (`content/.generated/index.json`, bundled with the server).
 - DynamoDB table `Portfolio` (on-demand, TTL enabled).
 - A private S3 bucket for the CV PDF, plus a separate S3 bucket for static assets.
 
@@ -62,7 +91,7 @@ behind CloudFront.
 **Performance Goals**:
 - Main content visible in ≤ 2 s on 4G (SC-001). Pages are statically generated and cached by
   CloudFront.
-- The assistant's first token in ≤ 3 s for 95% of questions (SC-002).
+- The assistant's first words in ≤ 6 s for 95% of questions (SC-002, amended 2026-11-21).
 
 **Constraints**:
 - Under $10/month in total (SC-003).
@@ -74,7 +103,7 @@ behind CloudFront.
 **Scale/Scope**:
 - Traffic: about 1,000 visits, 4,000 page views, 500 assistant messages and 100 CV downloads per
   month.
-- About 10 pages, 3–8 case studies, under 100 retrieval passages and about 70 eval cases.
+- About 10 pages, 3–8 case studies, 3 assistant tools and about 70 eval cases.
 
 All earlier unknowns are resolved in [research.md](./research.md) (R1–R12). Items marked
 **Verify** there are price and availability checks the owner confirms before the first deploy;
@@ -88,7 +117,7 @@ none of them changes the design.
 |---|---|---|---|
 | I | Tested features | Vitest covers every `src/server` module, using injected fakes. There is one Playwright smoke test per page: Home, About, CV, Projects list, a case study, Assistant, Guardrails, How I work with AI, Evals and Architecture. CI runs `typecheck`, `lint`, `test` and `test:e2e`, and a merge is blocked if any fails. | ✅ |
 | II | Server-side validation and secrets | zod validates `POST /api/chat`, the `/api/cv/file/{grantId}` path parameter, all environment config and all content frontmatter. There is one secret, an SSM SecureString created by the owner and read at runtime; it is not in the repo or in Lambda's environment. The only `NEXT_PUBLIC_` variables are the public site URL and the Umami website ID, which are not secrets. | ✅ |
-| III | Least-privilege IAM, no long-lived keys | The Lambda role is limited to: `bedrock:InvokeModel*` on the Haiku 5.5 model or inference-profile ARNs and on Titan V2; `dynamodb:GetItem/PutItem/UpdateItem/Query` on the one table; `s3:GetObject` on the single CV object; `ssm:GetParameter` on the one parameter. The owner deploys and runs evals with SSO session credentials. If CI ever needs AWS, it uses GitHub OIDC. **Justified wildcard**: if Haiku 5.5 is only available through the `us.` cross-region profile, the policy needs a region wildcard (`arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-5-5*`) because the profile can route to any US region. It still names one model. | ✅ (wildcard justified) |
+| III | Least-privilege IAM, no long-lived keys | The Lambda role is limited to: `bedrock:InvokeModel*` on the Haiku 5.5 model or inference-profile ARNs; `dynamodb:GetItem/PutItem/UpdateItem/Query` on the one table; `s3:GetObject` on the single CV object; `ssm:GetParameter` on the one parameter. The owner deploys and runs evals with SSO session credentials. If CI ever needs AWS, it uses GitHub OIDC. **Justified wildcard**: if Haiku 5.5 is only available through the `us.` cross-region profile, the policy needs a region wildcard (`arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-5-5*`) because the profile can route to any US region. It still names one model. | ✅ (wildcard justified) |
 | IV | Cost ceiling, serverless first | Everything is serverless or pay-per-request. The paid and always-on items are listed in the cost table: the Route 53 hosted zone ($0.50) and the domain (~$1.25), both optional. App Runner is rejected because it is always-on. The worst case with every cap reached is about $8.50 with a custom domain, under $10. | ✅ |
 | V | Human-approved infrastructure | The agent writes `infra/` (CDK) and `.env.example` and stops. The owner runs `cdk diff` and `cdk deploy` and creates the SSM secret. Every environment variable is listed in [quickstart.md](./quickstart.md) and `.env.example` with its purpose. | ✅ |
 | VI | Accessibility | Semantic layout landmarks and a skip link. Charts are inline SVG with a data table alternative. The diagram has `<title>` and `<desc>` plus an equivalent text explanation. The chat is fully keyboard-operable and announces streaming text with `aria-live="polite"`. An axe scan runs in every Playwright smoke test (SC-007). | ✅ |
@@ -104,8 +133,8 @@ none of them changes the design.
 | `tailwindcss`, `@tailwindcss/turbopack` (dev) | Next.js default styling; compiles to static CSS with no runtime cost |
 | `gray-matter` | Reads MDX frontmatter as plain data, so the content functions and the index script don't need to compile MDX |
 | `next-mdx-remote` | Renders MDX bodies in server components from strings returned by `getProject()` |
-| `@anthropic-ai/bedrock-sdk` | Official SDK for Claude on Bedrock (Mantle client), with streaming and typed usage |
-| `@aws-sdk/client-bedrock-runtime` | Titan embeddings, which aren't a Claude model so the Anthropic SDK doesn't cover them |
+| `@anthropic-ai/bedrock-sdk` | Official SDK for Claude on Bedrock (Mantle client), with tool use and typed usage |
+| `@anthropic-ai/sdk` (pinned `1.8.0`) | Message and tool types for the `ChatModel` interface; already installed by the Bedrock SDK |
 | `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb` | Rate limits, spending caps, grants, traces and evals |
 | `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` | Presigned URLs for the private CV PDF |
 | `@aws-sdk/client-ssm` | Reads the one SecureString secret at cold start |
@@ -113,7 +142,7 @@ none of them changes the design.
 | `vitest`, `@playwright/test` (dev) | Tests required by the constitution |
 | `@vitest/coverage-v8` (dev) | Coverage reports for `src/server/**` unit tests, using V8's built-in coverage with no code instrumentation |
 | `@axe-core/playwright` (dev) | Automated WCAG AA checks for SC-007 |
-| `tsx` (dev) | Runs the TypeScript scripts (index build, eval runner) without a separate build step |
+| `tsx` (dev) | Runs the TypeScript scripts (eval runner, Lambda packaging) without a separate build step |
 | ESLint and `eslint-config-next` (dev) | Next.js default; also enforces that `src/server` stays framework-free and that pages read content only through the content functions |
 | AWS Lambda Web Adapter (layer) | Runs the unmodified Next.js standalone server on Lambda with response streaming |
 | Umami script (CDN) | Cookieless analytics for FR-034–FR-036 at $0 |
@@ -130,10 +159,9 @@ assistant messages, 100 CV downloads and 4 eval runs per month. Rates are as of 
 | Lambda (+ function URL) | Next.js server and API | Always free: 1M requests, 400k GB-s. ~10k invocations × ~1 GB × ~0.5 s | $0.00 | $0.00 |
 | S3 | Static assets, CV PDF, CDK assets | ~$0.023/GB-month storage plus requests; < 1 GB | $0.03 | $0.05 |
 | DynamoDB (on-demand) | Limits, caps, grants, traces, evals | ~5k writes and ~5k reads per month; storage free up to 25 GB | $0.01 | $0.05 |
-| Bedrock: Claude Haiku 5.5 | Assistant answers | ~$0.0009/message × 500 | $0.45 | **$5.00** (monthly cap) |
-| Bedrock: Titan Embeddings V2 | Question and index embeddings | ~30k tokens indexed + ~25k tokens of queries | <$0.01 | <$0.01 |
+| Bedrock: Claude Haiku 5.5 | Assistant answers (2–3 model calls each) | ~$0.002/message × 500 | $1.00 | **$5.00** (monthly cap) |
 | Bedrock: Claude Opus 5.5 (eval judge) | Grades about 25 cases per eval run | ~$0.35/run × 4 runs; each run is limited to `EVAL_MAX_COST_USD` = $1 | $1.40 | $1.40 (4 runs) |
-| Bedrock: Claude Haiku 5.5 (eval answers) | Assistant answers during eval runs | ~70 cases × $0.0009 × 4 | $0.25 | $0.25 |
+| Bedrock: Claude Haiku 5.5 (eval answers) | Assistant answers during eval runs | ~70 cases × $0.002 × 4 | $0.56 | $0.56 |
 | CloudWatch Logs | Lambda and AI-call logs | Always free up to 5 GB | $0.00 | $0.00 |
 | SSM Parameter Store | One SecureString | Standard tier is free | $0.00 | $0.00 |
 | AWS Budgets | $5 and $8 alerts (FR-033) | First 2 budgets are free; this uses 1 | $0.00 | $0.00 |
@@ -141,8 +169,8 @@ assistant messages, 100 CV downloads and 4 eval runs per month. Rates are as of 
 | Route 53 hosted zone *(optional, paid always-on)* | Custom domain DNS | $0.50 per hosted zone | $0.50 | $0.50 |
 | Domain registration *(optional, paid)* | e.g. a `.com` | ~$14–15 per year | $1.25 | $1.25 |
 | Umami Cloud *(not AWS)* | Analytics | Hobby plan, free | $0.00 | $0.00 |
-| **Total without a custom domain** | | | **≈ $2.15** | **≈ $6.75** |
-| **Total with a custom domain** | | | **≈ $3.90** | **≈ $8.50** |
+| **Total without a custom domain** | | | **≈ $3.00** | **≈ $7.05** |
+| **Total with a custom domain** | | | **≈ $4.75** | **≈ $8.80** |
 
 Not used, which keeps costs at $0: Secrets Manager ($0.40/secret), provisioned concurrency, App
 Runner (~$5+ idle), OpenSearch Serverless (~$170+), NAT gateways and VPCs (the Lambda needs no
@@ -157,20 +185,20 @@ Visitor ──HTTPS──► CloudFront (global; ACM cert in us-east-1; optional
                      └─ /*      (cache by origin header)──OAC──► Lambda function URL
 Lambda (us-east-2, arm64, 1 GB, reserved concurrency 10)
   Next.js standalone via Lambda Web Adapter
-   ├─ Bedrock: Claude Haiku 5.5 (chat, streaming) and Titan Embeddings V2
+   ├─ Bedrock: Claude Haiku 5.5 (chat with tools, streaming)
    ├─ DynamoDB "Portfolio" (limits, spend, grants, conversations, traces, evals)
    ├─ S3 private bucket: cv.pdf (presigned GET, 60 s)
    └─ SSM SecureString: visitor-hash secret (read at cold start)
 Browser ──► Umami Cloud (cookieless analytics script + custom events)
-Owner laptop (SSO) ──► cdk diff / cdk deploy · npm run index:build · npm run eval
+Owner laptop (SSO) ──► cdk diff / cdk deploy · npm run eval
 AWS Budgets ──email──► owner at $5 and $8
 ```
 
 The site's assistant is built so that each piece can be replaced on its own:
 
-- `src/server/assistant/chat.ts` coordinates the steps: limits → retrieval → prompt → stream →
-  output filter → log and spend.
-- Each external piece (the model client, the embedder, the store) is passed in rather than
+- `src/server/assistant/chat.ts` coordinates the steps: limits → prompt → tool loop
+  (`runAgent`) → output filter → log and spend.
+- Each external piece (the model client and the store) is passed in rather than
   imported directly.
 
 ## Project Structure
@@ -221,25 +249,23 @@ src/
     ├── config.ts                     # zod-parsed env
     ├── log.ts                        # structured logs, log.aiCall()
     ├── content/                      # getProjects(), getProject(), getFeaturedProjects(), getCv(), getPage()
-    ├── assistant/                    # chat.ts, retrieval.ts, prompt.ts, guardrails.ts, pricing.ts
+    ├── assistant/                    # chat.ts, agent.ts, tools.ts, model.ts, prompt.ts, guardrails.ts, pricing.ts
     ├── cv/                           # issueCvLink(), resolveCvGrant()
     ├── limits/                       # rate limits, spend caps, visitorHash()
     ├── evals/                        # getEvalRuns(), getEvalRun()
     ├── store/                        # DynamoDB repository functions (one table)
-    └── aws/                          # client factories (Bedrock Mantle, Bedrock runtime, DynamoDB, S3, SSM)
+    └── aws/                          # client factories (Bedrock Mantle, DynamoDB, S3, SSM)
 
 content/
 ├── cv.mdx
 ├── pages/{home,about,how-i-work-with-ai,architecture,guardrails}.mdx
-├── projects/*.mdx
-└── .generated/index.json             # gitignored, built by scripts/build-index.ts
+└── projects/*.mdx
 
 evals/
 ├── cases/*.json                      # eval set (≥20 on-topic, ≥5 per guardrail)
 └── run.ts                            # eval runner → DynamoDB
 
 scripts/
-├── build-index.ts                    # chunk + embed → content/.generated/index.json
 └── check-content.ts                  # zod-validate all content
 
 infra/                                # AWS CDK (TypeScript); owner deploys
@@ -268,7 +294,7 @@ separate API later. Server actions are not used in v1 (see research R1b).
 | Risk | Mitigation |
 |---|---|
 | Haiku 5.5 isn't enabled in `us-east-2`, or is only offered through the `us.` profile | Verify before deploying; the model ID is a config value; IAM wildcard justified above |
-| Lambda cold start pushes first-token time past 3 s | CloudFront caches pages; 1 GB arm64; measure with V8 and V17; add a free scheduled warm-up only if needed |
+| Lambda cold start plus 2–3 model calls push the first words past 6 s | CloudFront caches pages; 1 GB arm64; measure with V8 and V17; add a free scheduled warm-up only if needed |
 | CloudFront OAC needs the `x-amz-content-sha256` header on POST | The chat client sends it via Web Crypto; the CV flow uses GET; fallback is a secret origin header (R1b) |
 | A bot drains the model budget | Per-visitor limits, daily and monthly caps, conversation limit, reserved concurrency 10, budget alerts (R5) |
 | Prompt injection or a leaked system prompt | Layered guardrails: input checks, canary string, streaming output filter, 100% guardrail evals (R6) |

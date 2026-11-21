@@ -6,6 +6,17 @@
 
 **Status**: Draft
 
+**Amended**: 2026-11-21 (User Story 3: tool calling instead of retrieval; answers still stream over SSE)
+
+> **Amendment 2026-11-21.** The assistant no longer retrieves passages from an embeddings index.
+> It calls three read-only tools over the site's own content (`list_projects`, `get_project`,
+> `get_profile`) in a loop of at most 4 tool rounds. Each tool step is shown as it happens, and the
+> final answer streams over Server-Sent Events (SSE). Why: the content is small and structured (one CV and a few
+> case studies), so exact lookups beat similarity search, there is no index to build or keep in
+> sync, and the steps are easy to show and to test. The original description below is kept as
+> written; US3, FR-011, FR-012, FR-014, FR-040, SC-002 and Key Entities reflect the amendment.
+> Retrieval (RAG) stays an option if the content grows (research R13).
+
 **Input**: User description: "A personal portfolio site for Mauricio, a backend-leaning full-stack
 developer from Cochabamba, Bolivia, that helps recruiters and hiring managers decide to interview
 him. Pages: Home, About, CV (HTML + private short-lived PDF link), Projects (case studies), AI
@@ -87,8 +98,9 @@ download it, then confirm the same link stops working after it expires.
 ### User Story 3 - Recruiter asks the AI assistant about Mauricio (Priority: P3)
 
 A recruiter types a question such as "Has he worked with message queues in production?" The
-assistant answers using only the CV and case studies, and a trace panel next to the answer shows
-which passages it retrieved, which model answered, tokens used, cost and latency.
+assistant answers using only the CV and case studies, which it reads by calling read-only tools,
+and a "How I answered" trace panel next to the answer shows which tools it called (with their
+arguments), which model answered, tokens used, cost and latency.
 
 **Why this priority**: It differentiates the portfolio and demonstrates AI engineering skill, but
 the site is still valuable without it.
@@ -99,11 +111,11 @@ refusals and a populated trace panel for each.
 **Acceptance Scenarios**:
 
 1. **Given** an on-topic question answerable from the CV or case studies, **When** the visitor
-   sends it, **Then** the answer streams in, its first words appear within 3 seconds, and it
-   cites which CV section or case study it relied on.
+   sends it, **Then** each tool step appears as it happens, the answer streams in with its first
+   words within 6 seconds, and it cites which CV section or case study it relied on.
 2. **Given** any answered or refused message, **When** the response completes, **Then** the trace
-   panel shows the retrieved passages (with their source), the model name, input and output
-   tokens, estimated cost and total latency.
+   panel shows each tool call (tool name, arguments, and whether it succeeded), the number of
+   tool rounds, the model name, input and output tokens, estimated cost and total latency.
 3. **Given** an off-topic question (e.g., "Write me a poem", "What's the weather?"), **When** sent,
    **Then** the assistant politely refuses and says what it can help with.
 4. **Given** a request to reveal its instructions or system prompt, **When** sent, **Then** the
@@ -114,6 +126,9 @@ refusals and a populated trace panel for each.
    assistant says it has no record of it rather than claiming it.
 7. **Given** a follow-up question in the same conversation, **When** sent, **Then** the assistant
    uses the earlier turns for context.
+8. **Given** a question that would need more than 4 tool rounds, **When** sent, **Then** the
+   assistant stops after the fourth round and gives a clear answer saying it couldn't finish,
+   with links to the CV and the projects page.
 
 ---
 
@@ -264,12 +279,16 @@ no cookie or personal identifier was set in the browser.
 
 **AI assistant**
 
-- **FR-011**: The assistant MUST answer using only the CV and case studies as its source of facts.
-- **FR-012**: Answers MUST stream, and MUST indicate which CV section or case study they rely on.
+- **FR-011**: The assistant MUST answer using only the CV and case studies as its source of facts,
+  which it reads only through read-only tools (`list_projects`, `get_project`, `get_profile`). No
+  tool may change any data.
+- **FR-012**: Answers MUST stream (Server-Sent Events), each tool step MUST be shown as it happens
+  (amended 2026-11-21), and answers MUST indicate which CV section or case study they rely on.
 - **FR-013**: Conversations MUST support follow-up questions within a browser session; history is
   not kept after the session ends.
-- **FR-014**: Every response MUST show a trace panel with: retrieved passages and their source,
-  model name, input and output tokens, estimated cost in USD and total latency.
+- **FR-014**: Every response MUST show a trace panel ("How I answered") with: each tool call
+  (name, arguments, success or error), the number of tool rounds, model name, input and output
+  tokens, estimated cost in USD and total latency.
 - **FR-015**: Every assistant call MUST be logged with model, tokens, cost and latency.
 - **FR-016**: The assistant MUST refuse questions unrelated to Mauricio's experience, skills,
   projects or this site, and say what it can help with.
@@ -284,6 +303,9 @@ no cookie or personal identifier was set in the browser.
 - **FR-021**: The assistant MUST stop accepting messages once either site-wide model spending cap
   is reached (default $0.25 per day and $5 per month), showing the unavailable message from Edge
   Cases. The daily cap resets at 00:00 UTC; the monthly cap resets on the 1st of the month.
+- **FR-040**: The assistant MUST make at most 4 tool rounds per visitor message and cap the output
+  tokens of each model call; when either limit is hit, it MUST return a clear fixed answer instead
+  of a partial one (added 2026-11-21).
 
 **Guardrails, practice and architecture pages**
 
@@ -346,10 +368,10 @@ no cookie or personal identifier was set in the browser.
 - **CV**: Structured experience, skills, education; the source for both the HTML page, the PDF and
   the assistant.
 - **CV download link**: Short-lived grant to download the PDF; issued time, expiry time.
-- **Source passage**: A chunk of CV or case-study text the assistant can retrieve, with its source
-  (document and section).
-- **Conversation turn**: Visitor message, assistant response, retrieved passages, model, tokens,
-  cost, latency, outcome (answered / refused / error).
+- **Tool call**: One read-only lookup the assistant makes over the content: tool name, arguments,
+  success or error. Replaces "Source passage" (amended 2026-11-21).
+- **Conversation turn**: Visitor message, assistant response, tool calls and rounds, model, tokens,
+  cost, latency, outcome (answered / refused / incomplete / error).
 - **Eval case**: Prompt, category (on-topic or a guardrail), expected behavior, pass criteria.
 - **Eval run**: Date, model, cases run, per-case results, pass rate, average cost, latency
   percentiles.
@@ -360,8 +382,9 @@ no cookie or personal identifier was set in the browser.
 
 - **SC-001**: Every page shows its main content within 2 seconds for a first-time visitor on a
   typical 4G mobile connection (measured with a standard mobile 4G throttling profile).
-- **SC-002**: For on-topic questions, the first words of the answer appear within 3 seconds for
-  at least 95% of questions.
+- **SC-002**: For on-topic questions, the first words of the answer appear within 6 seconds for
+  at least 95% of questions (amended 2026-11-21 from 3 seconds: an answer usually needs 2 to 3
+  model calls before its text starts, and the steps show progress meanwhile).
 - **SC-003**: Total monthly running cost of the site stays under $10, including assistant usage.
 - **SC-004**: The assistant passes 100% of guardrail eval cases (off-topic, system-prompt
   disclosure, personal contact data, unsupported claims) before release and on every later run.
