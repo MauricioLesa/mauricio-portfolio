@@ -12,12 +12,12 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "content:check": "tsx scripts/check-content.ts",
-    "index:build": "tsx scripts/build-index.ts",
     "eval": "tsx evals/run.ts",
     "package:lambda": "tsx scripts/package-lambda.ts"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "1.1.2",
+    "@anthropic-ai/sdk": "1.8.0",
     "@aws-sdk/client-bedrock-runtime": "3.1166.0",
     "@aws-sdk/client-dynamodb": "3.1166.0",
     "@aws-sdk/client-s3": "3.1166.0",

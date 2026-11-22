@@ -26,7 +26,6 @@ const standalone = join(root, '.next', 'standalone');
 const buildDir = join(root, 'infra', '.build');
 const outDir = join(buildDir, 'lambda');
 const zipPath = join(buildDir, 'lambda.zip');
-const indexJson = join(root, 'content', '.generated', 'index.json');
 
 function fail(message: string): never {
   console.error(`package-lambda: ${message}`);
@@ -59,12 +58,6 @@ if (existsSync(join(root, 'public'))) {
   cpSync(join(root, 'public'), join(outDir, 'public'), { recursive: true, dereference: true });
 }
 
-if (existsSync(indexJson)) {
-  mkdirSync(join(outDir, 'content', '.generated'), { recursive: true });
-  cpSync(indexJson, join(outDir, 'content', '.generated', 'index.json'));
-} else {
-  console.warn('package-lambda: content/.generated/index.json is missing; fine until US3 (release:check requires it).');
-}
 
 writeFileSync(join(outDir, 'run.sh'), '#!/bin/bash\nexec node server.js\n', { mode: 0o755 });
 
@@ -74,7 +67,9 @@ const rel = (file: string) => relative(outDir, file).split(sep).join('/');
 const leaked = files.map(rel).filter((p) => p === 'private' || p.startsWith('private/') || /(^|\/)\.env(\.|$)/.test(p));
 if (leaked.length > 0) fail(`refusing to package private files:\n  ${leaked.join('\n  ')}`);
 
-for (const required of ['server.js', 'run.sh', '.next/BUILD_ID']) {
+// The assistant's tools read content/ at request time (pages are prerendered), so Next's file
+// tracing must have copied it into the standalone output. Fail here rather than in production.
+for (const required of ['server.js', 'run.sh', '.next/BUILD_ID', 'content/cv.mdx']) {
   if (!existsSync(join(outDir, required))) fail(`missing ${required} in ${outDir}`);
 }
 
