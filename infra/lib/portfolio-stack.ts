@@ -29,15 +29,30 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
  */
 const WEB_ADAPTER_LAYER_ARN = 'arn:aws:lambda:us-east-2:753240598075:layer:LambdaAdapterLayerArm64:30';
 
+/** Option A (2026-11-23): the Anthropic API key, a SecureString created by hand with the AWS CLI. */
+const ANTHROPIC_KEY_PARAM = '/portfolio/anthropic-api-key';
+
 /** Defaults from .env.example (FR-020, FR-021, FR-032). */
 const APP_LIMITS = {
-  SPEND_CAP_DAILY_USD: '0.25',
-  SPEND_CAP_MONTHLY_USD: '5',
   RATE_LIMIT_CHAT_PER_HOUR: '20',
   RATE_LIMIT_CV_PER_HOUR: '10',
 } as const;
 
+/**
+ * Assistant settings, set at deploy time from environment variables (infra/bin/portfolio.ts) so
+ * the provider, model and spending caps are not written in this public repo. The only secret, the
+ * API key, is never in the template: the function reads it from SSM at runtime.
+ */
+export interface AssistantSettings {
+  readonly provider: string;
+  readonly modelId: string;
+  readonly effort: string;
+  readonly spendCapDailyUsd: string;
+  readonly spendCapMonthlyUsd: string;
+}
+
 export interface PortfolioStackProps extends StackProps {
+  readonly assistant: AssistantSettings;
   /** Recipient of the $5 and $8 budget alerts (FR-033). */
   readonly budgetAlertEmail: string;
   /**
@@ -106,6 +121,13 @@ export class PortfolioStack extends Stack {
       // T116: app configuration.
       AWS_MODE: 'real',
       DYNAMO_TABLE_NAME: this.table.tableName,
+      // The provider is a config choice (option A, 2026-11-23); values come from deploy-time env.
+      CHAT_PROVIDER: props.assistant.provider,
+      CHAT_MODEL_ID: props.assistant.modelId,
+      CHAT_EFFORT: props.assistant.effort,
+      SPEND_CAP_DAILY_USD: props.assistant.spendCapDailyUsd,
+      SPEND_CAP_MONTHLY_USD: props.assistant.spendCapMonthlyUsd,
+      ANTHROPIC_KEY_PARAM,
       ...APP_LIMITS,
     };
     if (props.siteUrl) environment.NEXT_PUBLIC_SITE_URL = props.siteUrl;
@@ -158,6 +180,18 @@ export class PortfolioStack extends Stack {
           'dynamodb:DeleteItem',
         ],
         resources: [this.table.tableArn],
+      }),
+    );
+
+    // Option A: read the one API key parameter, nothing else. SecureStrings made with the CLI's
+    // default key use the AWS-managed aws/ssm key, which allows decryption through SSM for any
+    // principal in the account that can call GetParameter, so no kms:Decrypt statement is needed.
+    this.serverFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [
+          Stack.of(this).formatArn({ service: 'ssm', resource: 'parameter', resourceName: ANTHROPIC_KEY_PARAM.slice(1) }),
+        ],
       }),
     );
 

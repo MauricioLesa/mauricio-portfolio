@@ -32,6 +32,7 @@ function synth(extra: { reservedConcurrency?: number } = {}): Template {
   const stack = new PortfolioStack(new App(), 'TestStack', {
     env: { region: 'us-east-2' },
     budgetAlertEmail: 'alerts@example.com',
+    assistant: { provider: 'fake', modelId: 'test-model', effort: 'low', spendCapDailyUsd: '1', spendCapMonthlyUsd: '2' },
     ...buildDirs,
     ...extra,
   });
@@ -84,6 +85,16 @@ describe('PortfolioStack', () => {
       ['dynamodb:DeleteItem', 'dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:UpdateItem'],
     );
     expect(asArray(dynamoStatements[0]!.Resource)).toHaveLength(1);
+  });
+
+  it('grants ssm:GetParameter on the one API key parameter only (option A)', () => {
+    const ssmStatements = policyStatements().filter((s) =>
+      asArray(s.Action).some((a) => typeof a === 'string' && a.startsWith('ssm:')),
+    );
+    expect(ssmStatements).toHaveLength(1);
+    expect(asArray(ssmStatements[0]!.Action)).toEqual(['ssm:GetParameter']);
+    expect(JSON.stringify(ssmStatements[0]!.Resource)).toContain(':parameter/portfolio/anthropic-api-key');
+    expect(JSON.stringify(ssmStatements[0]!.Resource)).not.toContain('*');
   });
 
   it('blocks public access on the static bucket and enforces SSL', () => {

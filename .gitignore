@@ -49,3 +49,6 @@ infra/cdk.out/
 infra/.build/
 test-results/
 playwright-report/
+
+# deploy-time settings (assistant provider, model, caps)
+*.local.ps1

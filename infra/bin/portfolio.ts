@@ -20,6 +20,22 @@ const reservedConcurrencySetting: unknown = app.node.tryGetContext('reservedConc
 const reservedConcurrency =
   reservedConcurrencySetting === undefined ? undefined : Number(reservedConcurrencySetting);
 
+// Assistant settings: deploy-time only, so they stay out of the public repo (owner decision 2026-11-23).
+const assistantKeys = {
+  provider: 'CHAT_PROVIDER',
+  modelId: 'CHAT_MODEL_ID',
+  effort: 'CHAT_EFFORT',
+  spendCapDailyUsd: 'SPEND_CAP_DAILY_USD',
+  spendCapMonthlyUsd: 'SPEND_CAP_MONTHLY_USD',
+} as const;
+const missing = Object.values(assistantKeys).filter((key) => !process.env[key]?.trim());
+if (missing.length) {
+  throw new Error(`Set these environment variables before cdk synth/diff/deploy: ${missing.join(', ')}`);
+}
+const assistant = Object.fromEntries(
+  Object.entries(assistantKeys).map(([prop, key]) => [prop, process.env[key]!.trim()]),
+) as Record<keyof typeof assistantKeys, string>;
+
 if (!budgetAlertEmail) {
   throw new Error(
     'BUDGET_ALERT_EMAIL is required (FR-033). Pass `-c budgetAlertEmail=you@example.com` or set the BUDGET_ALERT_EMAIL env var.',
@@ -35,6 +51,7 @@ new PortfolioStack(app, 'PortfolioStack', {
     : { region: 'us-east-2' },
   crossRegionReferences: Boolean(domainName),
   budgetAlertEmail,
+  assistant,
   siteUrl,
   reservedConcurrency,
   description: 'Mauricio portfolio: Next.js on Lambda (Web Adapter) behind CloudFront, S3, DynamoDB, budget',
