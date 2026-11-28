@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Secrets: never read local env files
+
+Do not read, print, search, copy or edit `.env`, `.env.local` or any other `.env*` file except `.env.example`, and do not print environment variables (`env`, `printenv`, `$env:...`). They hold real secrets such as the Anthropic API key. If a task needs a setting from them, ask Mauricio for the variable name and let him set the value himself. `.claude/settings.json` enforces this for Claude Code.

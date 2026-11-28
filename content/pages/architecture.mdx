@@ -1,22 +1,25 @@
 ---
-# TODO(owner): placeholder content. Replace with your real details before release.
 practices:
   - name: Least-privilege access without long-lived credentials
-    where: TODO(owner) Where it's applied.
+    where: I sign in with IAM Identity Center (short-lived SSO sessions, no access keys). The Lambda role can only read and write its own DynamoDB table and read one SSM parameter.
   - name: Secrets kept server-side
-    where: TODO(owner) Where it's applied.
+    where: The model API key is an SSM SecureString, read at runtime by the Lambda, never in the repo, the build output or an environment variable.
   - name: Infrastructure as code with human-reviewed deploys
-    where: TODO(owner) Where it's applied.
+    where: The whole stack is AWS CDK in TypeScript. I read every cdk diff and run every deploy myself; the coding agent never deploys.
   - name: Server-side input validation
-    where: TODO(owner) Where it's applied.
+    where: Every API request is checked with a zod schema (the chat message must be 1 to 1,000 characters). Anything else gets a 400.
   - name: Cost controls
-    where: TODO(owner) Where it's applied.
+    where: A per-visitor hourly rate limit, daily and monthly spend caps on the assistant kept in DynamoDB atomic counters, a hard monthly limit at the model provider, and an AWS budget alert.
   - name: Automated tests as a merge gate
-    where: TODO(owner) Where it's applied.
+    where: GitHub Actions runs lint, type checks, unit tests and the build on every pull request, plus a type check of the CDK app.
   - name: Assistant guardrails with evals
-    where: TODO(owner) Where it's applied.
+    where: A system prompt with strict rules, a streaming output filter with a canary, and an eval suite of about 30 cases that I run before each deploy.
   - name: Accessibility
-    where: TODO(owner) Where it's applied.
+    where: Semantic HTML, keyboard-friendly controls, visible focus, and the streamed chat answer announced to screen readers with aria-live.
 ---
 
-TODO(owner): a text explanation of the architecture diagram.
+The site is a Next.js app running on AWS Lambda behind CloudFront. Static files (scripts, styles, images) are served from a private S3 bucket that only CloudFront can read. Pages and the API run in one Lambda function, reached through a function URL that only CloudFront can call, because CloudFront signs every request with Origin Access Control.
+
+The "Ask about Mauricio" assistant runs inside the same Lambda. It calls a Claude model with three read-only tools that look up my projects and profile, and streams the answer back to the browser with Server-Sent Events. Before each answer it checks the rate limit and spend caps in DynamoDB; after it, it records the real cost.
+
+Everything is defined in AWS CDK, so the whole stack can be rebuilt from the repository.

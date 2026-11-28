@@ -1,0 +1,20 @@
+{
+  "cases": [
+    {"id": "ot-react", "category": "on-topic", "message": "What has Mauricio built with React?", "expect": {"type": "answer", "mustMention": [["react"]], "usesTool": ["list_projects", "get_project"]}},
+    {"id": "ot-migration", "category": "on-topic", "message": "Tell me about the Razor to React migration.", "expect": {"type": "answer", "mustMention": [["razor"], ["react"]], "usesTool": ["get_project", "list_projects"]}},
+    {"id": "ot-migration-ai", "category": "on-topic", "message": "How did he use Claude Code in the code migration project?", "expect": {"type": "answer", "mustMention": [["skill"]], "usesTool": ["get_project", "list_projects"]}},
+    {"id": "ot-skills", "category": "on-topic", "message": "What programming languages does he know?", "expect": {"type": "answer", "mustMention": [["typescript"]], "usesTool": ["get_profile"]}},
+    {"id": "ot-backend", "category": "on-topic", "message": "Does he have backend experience?", "expect": {"type": "answer", "mustMention": [["node"]], "usesTool": ["get_profile", "list_projects"]}},
+    {"id": "ot-aws", "category": "on-topic", "message": "Has he worked with AWS?", "expect": {"type": "answer", "mustMention": [["aws"]], "usesTool": ["get_profile", "list_projects"]}},
+    {"id": "ot-projects", "category": "on-topic", "message": "List his projects.", "expect": {"type": "answer", "usesTool": ["list_projects"]}},
+    {"id": "ot-contact", "category": "on-topic", "message": "How can I contact him?", "expect": {"type": "answer", "mustMention": [["@"]]}},
+    {"id": "ot-spanish", "category": "on-topic", "message": "¿Qué tecnologías usa Mauricio en el frontend?", "expect": {"type": "answer", "mustMention": [["react"]], "usesTool": ["get_profile", "list_projects"]}},
+    {"id": "ot-docker", "category": "on-topic", "message": "Does he know Docker?", "expect": {"type": "answer", "mustMention": [["docker"]], "usesTool": ["get_profile", "list_projects"]}},
+    {"id": "ot-jalasoft", "category": "on-topic", "message": "Where did Mauricio work most recently, and what did he do there?", "expect": {"type": "answer", "mustMention": [["jalasoft"], ["api", "feature"]], "usesTool": ["get_profile"]}},
+    {"id": "ot-python", "category": "on-topic", "message": "Does he have any Python or machine learning experience?", "expect": {"type": "answer", "mustMention": [["python"], ["interpolation", "pytorch", "neural"]], "usesTool": ["get_profile"]}},
+    {"id": "ot-education", "category": "on-topic", "message": "What did he study?", "expect": {"type": "answer", "mustMention": [["systems engineering"]], "usesTool": ["get_profile"]}},
+    {"id": "ot-portfolio", "category": "on-topic", "message": "How is this assistant built?", "expect": {"type": "answer", "mustMention": [["tool"], ["aws", "lambda"]], "usesTool": ["get_project", "list_projects"]}},
+    {"id": "ot-remote", "category": "on-topic", "message": "Has he worked remotely with US teams in English?", "expect": {"type": "answer", "mustMention": [["remote"], ["english"]], "usesTool": ["get_profile"]}},
+    {"id": "ot-rabbitmq", "category": "on-topic", "message": "Does Mauricio know RabbitMQ?", "expect": {"type": "answer", "mustMention": [["rabbitmq"], ["personal project", "bootcamp"]], "usesTool": ["get_profile"]}}
+  ]
+}

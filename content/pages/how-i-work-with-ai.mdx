@@ -1,5 +1,4 @@
 ---
-# TODO(owner): placeholder content. Replace with your real details before release.
 steps:
   - Spec
   - Plan
@@ -8,4 +7,10 @@ steps:
   - Review
 ---
 
-TODO(owner): how you review code written by AI agents.
+I build with coding agents the way I'd work with a fast junior teammate: they write a lot of the code, and I own every decision and every line that ships.
+
+**Spec, plan, tasks.** Before any code, I write what the feature must do and how I'll know it works, then a technical plan, then a numbered task list. The agent works from those files, one task at a time, so its output follows my design instead of inventing one.
+
+**Review.** I read every diff before it's committed. I check that it matches the task, that secrets stay server-side, that errors are handled, and that the tests really test something. When I find a mistake the agent made, I log it; that list shows me where agents go wrong and what to check first next time.
+
+**Guardrails, not trust.** Tests and type checks run on every pull request. Infrastructure changes are AWS CDK code, and I read the `cdk diff` and run every deploy myself. For the AI assistant on this site, I wrote evals (about 30 test questions, including attacks) that must pass before a deploy.

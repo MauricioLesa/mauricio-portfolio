@@ -54,16 +54,16 @@ export function createContent(root: string) {
         .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
     },
 
-    /** Exactly 3 projects, ordered by featuredRank. Throws if the content doesn't have exactly 3. */
+    /** 1 to 3 projects, ordered by featuredRank. Throws if there are none or more than 3. */
     async getFeaturedProjects(): Promise<ProjectSummary[]> {
       const featured = loadAllProjects()
         .filter((p) => p.featured)
         .map(toSummary)
         .sort((a, b) => (a.featuredRank ?? 0) - (b.featuredRank ?? 0));
-      if (featured.length !== FEATURED_COUNT) {
+      if (featured.length < 1 || featured.length > FEATURED_COUNT) {
         throw new ContentError(
           path.join(root, PROJECTS_DIR),
-          `Expected exactly ${FEATURED_COUNT} featured projects, found ${featured.length}`,
+          `Expected 1 to ${FEATURED_COUNT} featured projects, found ${featured.length}`,
         );
       }
       return featured;

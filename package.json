@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "content:check": "tsx scripts/check-content.ts",
-    "eval": "tsx evals/run.ts",
+    "eval": "tsx --env-file-if-exists=.env.local --conditions=react-server evals/run.ts",
     "package:lambda": "tsx scripts/package-lambda.ts"
   },
   "dependencies": {

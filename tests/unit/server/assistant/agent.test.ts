@@ -36,7 +36,7 @@ describe('runAgent', () => {
     expect(assistant).toEqual({ role: 'assistant', content: first.content });
     const [result1] = toolResultsOf(results);
     expect(result1).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_1', is_error: false });
-    expect(JSON.parse(result1!.content)).toHaveLength(2);
+    expect(JSON.parse(result1!.content)).toHaveLength(1); // only code-migration lists React
   });
 
   it('runs two tools from one reply and answers both in ONE user message, in order', async () => {

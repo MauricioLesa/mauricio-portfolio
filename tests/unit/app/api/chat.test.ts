@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { POST } from '@/app/api/chat/route';
 
+// CHAT_PROVIDER is unset in tests, so the route uses the fake model and in-memory counters.
 function req(body: unknown) {
   return new Request('http://localhost/api/chat', {
     method: 'POST',
@@ -11,10 +12,15 @@ function req(body: unknown) {
 }
 
 describe('POST /api/chat', () => {
-  it('accepts a valid message', async () => {
+  it('streams a valid message as SSE, ending with a done event', async () => {
     const res = await POST(req({ message: 'What did you build at your last job?' }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ echo: 'What did you build at your last job?' });
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const body = await res.text();
+    expect(body).toMatch(/^event: meta\n/);
+    expect(body).toContain('event: delta');
+    expect(body).toContain('event: done');
   });
 
   it('rejects an empty or whitespace-only message', async () => {

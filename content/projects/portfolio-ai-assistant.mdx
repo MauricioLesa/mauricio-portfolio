@@ -1,0 +1,35 @@
+---
+slug: portfolio-ai-assistant
+title: This portfolio and its AI assistant, on AWS
+summary: A serverless Next.js site on AWS with an AI agent that answers from my real CV through tool calling, protected by rate limits, spend caps, guardrails and evals.
+featured: true
+featuredRank: 2
+stack: [Next.js, TypeScript, AWS CDK, Lambda, CloudFront, DynamoDB, Claude API, Vitest]
+publishedAt: 2026-11-24
+---
+
+## Problem
+
+Recruiters spend a minute or two on a portfolio. I wanted them to be able to ask questions about my work and get a true answer right away, and I wanted the site itself to prove I can ship an AI feature to production safely: no invented experience, no leaked instructions, and no surprise bill.
+
+## Architecture
+
+- **Hosting:** Next.js running on AWS Lambda behind CloudFront. Static files come from a private S3 bucket. The Lambda function URL only accepts requests signed by CloudFront (Origin Access Control). The whole stack is AWS CDK in TypeScript.
+- **The agent:** a tool-calling loop over a Claude model with three read-only tools (`list_projects`, `get_project`, `get_profile`) that read the same content files as the site. At most 4 tool rounds, 1,024 output tokens and a 15-second timeout per call.
+- **Streaming:** the answer streams to the browser with Server-Sent Events while the model writes it. The panel "How I answered" shows the tool calls, tokens, cost and latency of each answer.
+- **Limits:** a per-visitor hourly rate limit and daily and monthly spend caps, kept in DynamoDB atomic counters (one `UpdateItem` with `ADD`, so concurrent requests can't miscount).
+- **Secrets:** the model API key is an SSM SecureString read at runtime, with IAM access to that one parameter only.
+- **Guardrails:** strict prompt rules, a refusal marker the server strips and counts, and a canary in the system prompt. A streaming output filter stops any answer that leaks it, even when it's split across chunks.
+
+## Trade-offs
+
+- **Provider:** the plan was Amazon Bedrock, but my account was blocked from Bedrock models. I put the model behind a small `ChatModel` interface and added the Anthropic API as a second provider, so moving back to Bedrock is one class, not a rewrite.
+- **Soft spend cap:** the real cost is known only after an answer, so a few requests at the same moment can go a few cents over the daily cap. That's acceptable at about $1.40 a day, and a hard monthly limit at the provider is the backstop.
+- **Deterministic graders first:** evals check outcomes and key words with code, not with a second model. Cheaper and repeatable; a model-graded check for answer quality can come later.
+- **One question at a time:** multi-turn conversation is the next feature.
+
+## Results
+
+- About 36 eval cases in five groups (on-topic, off-topic, system-prompt attacks, private contact data, invented claims) run before each deploy. Guardrail groups must pass 100%, on-topic 90%.
+- Unit tests and type checks run in GitHub Actions on every pull request.
+- A typical answer costs a fraction of a cent.

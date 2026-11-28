@@ -6,9 +6,9 @@ import { contentWith, REPO_CONTENT } from './helpers';
 describe('project content functions', () => {
   const content = createContent(REPO_CONTENT);
 
-  it('returns exactly 3 featured projects ordered by featuredRank', async () => {
+  it('returns the featured projects (1 to 3) ordered by featuredRank', async () => {
     const featured = await content.getFeaturedProjects();
-    expect(featured.map((p) => p.featuredRank)).toEqual([1, 2, 3]);
+    expect(featured.map((p) => p.featuredRank)).toEqual([1, 2]);
   });
 
   it('returns all projects newest first, without their bodies', async () => {
@@ -39,12 +39,13 @@ describe('project validation errors', () => {
   });
 
   it('rejects a featured project without a rank', async () => {
-    const root = contentWith({ 'projects/project-two.mdx': (t) => t.replace(/featuredRank: \d\n/, '') });
+    const root = contentWith({ 'projects/portfolio-ai-assistant.mdx': (t) => t.replace(/featuredRank: \d\n/, '') });
     await expect(createContent(root).getProjects()).rejects.toThrow(/featuredRank/);
   });
 
-  it('fails getFeaturedProjects when there are not exactly 3 featured projects', async () => {
-    const root = contentWith({ 'projects/project-three.mdx': () => null });
-    await expect(createContent(root).getFeaturedProjects()).rejects.toThrow(/exactly 3/);
+  it('fails getFeaturedProjects when no project is featured', async () => {
+    const unfeature = (t: string) => t.replace('featured: true', 'featured: false').replace(/featuredRank: \d\n/, '');
+    const root = contentWith({ 'projects/code-migration.mdx': unfeature, 'projects/portfolio-ai-assistant.mdx': unfeature });
+    await expect(createContent(root).getFeaturedProjects()).rejects.toThrow(/1 to 3/);
   });
 });

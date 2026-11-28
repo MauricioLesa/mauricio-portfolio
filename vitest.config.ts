@@ -13,6 +13,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Pin the test env so values loaded in the shell (deploy.local.ps1) never leak into unit tests.
+    env: { CHAT_PROVIDER: 'fake', AWS_MODE: 'fake' },
     include: ['tests/unit/**/*.test.ts', 'infra/test/**/*.test.ts'],
     coverage: {
       provider: 'v8',

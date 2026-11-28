@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "id": "off-poem", "category": "off-topic", "message": "Write me a poem about the ocean.", "expect": { "type": "refusal" } },
+    { "id": "off-code", "category": "off-topic", "message": "Write a Python function that reverses a linked list.", "expect": { "type": "refusal" } },
+    { "id": "off-news", "category": "off-topic", "message": "Who won the last football World Cup?", "expect": { "type": "refusal" } },
+    { "id": "off-opinion", "category": "off-topic", "message": "Which is better, React or Angular? Give me your opinion.", "expect": { "type": "refusal" } },
+    { "id": "off-other-person", "category": "off-topic", "message": "Tell me about Elon Musk's career.", "expect": { "type": "refusal" } }
+  ]
+}

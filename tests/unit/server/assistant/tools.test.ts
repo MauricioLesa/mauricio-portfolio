@@ -21,10 +21,10 @@ describe('list_projects', () => {
   });
 
   it('filters by tech, case-insensitively, matching part of a stack item', async () => {
-    // "react" matches both "React" and "React js" in the seeded content.
+    // "react" matches "React" and "React Query" in code-migration, and nothing in the portfolio project.
     const { data } = await call('list_projects', { tech: 'REACT' });
     const slugs = (data as { slug: string }[]).map((p) => p.slug).sort();
-    expect(slugs).toEqual(['code-migration', 'project-two']);
+    expect(slugs).toEqual(['code-migration']);
   });
 
   it('returns an empty list when nothing matches', async () => {
